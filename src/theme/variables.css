@@ -1,0 +1,158 @@
+/* src/theme/variables.css */
+/* =========================================================
+   PLUMI — IONIC THEME VARIABLES
+   ========================================================= */
+
+/* ---------- Light theme ---------- */
+:root {
+  color-scheme: light;
+
+  --ion-font-family: var(--plumi-font-body);
+
+  --ion-color-primary: #5b5bd6;
+  --ion-color-primary-rgb: 91, 91, 214;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #5050bc;
+  --ion-color-primary-tint: #7070dc;
+
+  --ion-color-secondary: #6875e8;
+  --ion-color-secondary-rgb: 104, 117, 232;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-shade: #5c67cc;
+  --ion-color-secondary-tint: #7984ea;
+
+  --ion-color-tertiary: #8b5cf6;
+  --ion-color-tertiary-rgb: 139, 92, 246;
+  --ion-color-tertiary-contrast: #ffffff;
+  --ion-color-tertiary-shade: #7a51d8;
+  --ion-color-tertiary-tint: #976df7;
+
+  --ion-color-success: #16845b;
+  --ion-color-success-rgb: 22, 132, 91;
+  --ion-color-success-contrast: #ffffff;
+  --ion-color-success-shade: #13744f;
+  --ion-color-success-tint: #2d916b;
+
+  --ion-color-warning: #b77912;
+  --ion-color-warning-rgb: 183, 121, 18;
+  --ion-color-warning-contrast: #ffffff;
+  --ion-color-warning-shade: #a16a10;
+  --ion-color-warning-tint: #bf8629;
+
+  --ion-color-danger: #d94343;
+  --ion-color-danger-rgb: 217, 67, 67;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-shade: #bf3b3b;
+  --ion-color-danger-tint: #dd5656;
+
+  --ion-background-color: var(--plumi-bg);
+  --ion-background-color-rgb: 247, 248, 252;
+
+  --ion-text-color: var(--plumi-ink);
+  --ion-text-color-rgb: 35, 39, 59;
+
+  --ion-card-background: var(--plumi-surface);
+  --ion-item-background: var(--plumi-surface);
+  --ion-toolbar-background: var(--plumi-surface);
+  --ion-toolbar-color: var(--plumi-ink);
+  --ion-border-color: var(--plumi-border);
+
+  --ion-tab-bar-background: var(--plumi-surface);
+  --ion-tab-bar-color: var(--plumi-text-muted);
+  --ion-tab-bar-color-selected: var(--plumi-primary);
+
+  --ion-overlay-background-color: #15152b;
+  --ion-backdrop-color: #15152b;
+  --ion-backdrop-opacity: 0.48;
+}
+
+/* ---------- Dark theme ---------- */
+:root.dark,
+:root[data-theme="dark"],
+.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ion-color-primary: #a5a4ff;
+  --ion-color-primary-rgb: 165, 164, 255;
+  --ion-color-primary-contrast: #202044;
+  --ion-color-primary-contrast-rgb: 32, 32, 68;
+  --ion-color-primary-shade: #9190e0;
+  --ion-color-primary-tint: #b0afff;
+
+  --ion-color-secondary: #a5adff;
+  --ion-color-secondary-rgb: 165, 173, 255;
+  --ion-color-secondary-contrast: #202044;
+  --ion-color-secondary-shade: #9198e0;
+  --ion-color-secondary-tint: #b0b7ff;
+
+  --ion-color-tertiary: #c4a7ff;
+  --ion-color-tertiary-rgb: 196, 167, 255;
+  --ion-color-tertiary-contrast: #26154a;
+  --ion-color-tertiary-shade: #ac93e0;
+  --ion-color-tertiary-tint: #cab0ff;
+
+  --ion-color-success: #55d6a0;
+  --ion-color-success-contrast: #102a20;
+  --ion-color-success-shade: #4bbd8d;
+  --ion-color-success-tint: #66d9a9;
+
+  --ion-color-warning: #f2c66d;
+  --ion-color-warning-contrast: #30230a;
+  --ion-color-warning-shade: #d5ae60;
+  --ion-color-warning-tint: #f4ce7d;
+
+  --ion-color-danger: #ff8585;
+  --ion-color-danger-contrast: #3b1111;
+  --ion-color-danger-shade: #e07575;
+  --ion-color-danger-tint: #ff9292;
+
+  --ion-background-color: var(--plumi-bg);
+  --ion-background-color-rgb: 17, 19, 35;
+
+  --ion-text-color: var(--plumi-ink);
+  --ion-text-color-rgb: 235, 237, 250;
+
+  --ion-card-background: var(--plumi-surface);
+  --ion-item-background: var(--plumi-surface);
+  --ion-toolbar-background: var(--plumi-surface);
+  --ion-toolbar-color: var(--plumi-ink);
+  --ion-border-color: var(--plumi-border);
+
+  --ion-tab-bar-background: var(--plumi-surface);
+  --ion-tab-bar-color: var(--plumi-text-muted);
+  --ion-tab-bar-color-selected: var(--plumi-primary);
+
+  --ion-overlay-background-color: #000000;
+  --ion-backdrop-color: #000000;
+  --ion-backdrop-opacity: 0.64;
+}
+
+/* ---------- Ionic component refinements ---------- */
+ion-card {
+  --border-radius: var(--plumi-radius-sm);
+  --box-shadow: var(--plumi-shadow-card);
+  margin: 0;
+}
+
+ion-button {
+  --border-radius: var(--plumi-radius-sm);
+  font-weight: var(--plumi-weight-semibold);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+ion-input,
+ion-textarea,
+ion-select,
+ion-datetime {
+  --highlight-color-focused: var(--plumi-primary);
+}
+
+ion-alert {
+  --backdrop-opacity: 0.55;
+  --button-background: transparent;
+  --button-color: var(--plumi-primary);
+  --border-radius: var(--plumi-radius-sm);
+}

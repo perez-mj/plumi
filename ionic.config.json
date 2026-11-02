@@ -1,0 +1,7 @@
+{
+  "name": "plumi-lms",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "vue-vite"
+}

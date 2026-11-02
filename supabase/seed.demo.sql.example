@@ -1,0 +1,196 @@
+-- supabase/seed.demo.sql.example
+-- ────────────────────────────────────────────────────────────
+-- ⚠️  DEMO DATA TEMPLATE  ⚠️
+--
+-- Copy to `supabase/seed.demo.sql` and fill in the placeholders,
+-- then run locally:
+--
+--     npx supabase db reset --linked
+--
+-- ────────────────────────────────────────────────────────────
+
+-- ============================================================
+-- 5. DEMO USERS (auth.users + identities + profiles)
+--    Password for all demo users: <DEMO_PASSWORD>
+--    This mirrors what GoTrue writes. DO NOT do this in prod.
+-- ============================================================
+DO $$
+DECLARE
+  v_admin_id      uuid := '<ADMIN_UUID>';
+  v_instructor_id uuid := '<INSTRUCTOR_UUID>';
+  v_student_id    uuid := '<STUDENT_UUID>';
+  v_pw            text := extensions.crypt('<DEMO_PASSWORD>', extensions.gen_salt('bf'));
+  v_admin_role    uuid;
+  v_instr_role    uuid;
+  v_student_role  uuid;
+BEGIN
+  -- Idempotent: skip if users already exist
+  IF EXISTS (SELECT 1 FROM auth.users WHERE id = v_admin_id) THEN
+    RAISE NOTICE 'Demo users already seeded — skipping';
+    RETURN;
+  END IF;
+
+  SELECT id INTO v_admin_role   FROM public.roles WHERE name = 'ADMIN';
+  SELECT id INTO v_instr_role   FROM public.roles WHERE name = 'INSTRUCTOR';
+  SELECT id INTO v_student_role FROM public.roles WHERE name = 'STUDENT';
+
+  -- ---- Admin ----
+  INSERT INTO auth.users (
+    id, instance_id, aud, role, email, encrypted_password,
+    email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+    created_at, updated_at, confirmation_token, recovery_token,
+    email_change_token_new, email_change
+  ) VALUES (
+    v_admin_id, '<INSTANCE_ID>',
+    'authenticated', 'authenticated',
+    '<ADMIN_EMAIL>', v_pw,
+    now(),
+    '{"provider":"email","providers":["email"]}',
+    jsonb_build_object('first_name', '<ADMIN_FIRST_NAME>', 'last_name', '<ADMIN_LAST_NAME>'),
+    now(), now(), '', '', '', ''
+  );
+
+  INSERT INTO auth.identities (
+    id, user_id, provider_id, identity_data, provider,
+    last_sign_in_at, created_at, updated_at
+  ) VALUES (
+    gen_random_uuid(), v_admin_id, v_admin_id,
+    jsonb_build_object('sub', v_admin_id::text, 'email', '<ADMIN_EMAIL>'),
+    'email', now(), now(), now()
+  );
+
+  INSERT INTO public.profiles (id, role_id, email, first_name, last_name, is_active)
+  VALUES (
+    v_admin_id, v_admin_role, '<ADMIN_EMAIL>',
+    '<ADMIN_FIRST_NAME>', '<ADMIN_LAST_NAME>', true
+  );
+
+  -- ---- Instructor ----
+  INSERT INTO auth.users (
+    id, instance_id, aud, role, email, encrypted_password,
+    email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+    created_at, updated_at, confirmation_token, recovery_token,
+    email_change_token_new, email_change
+  ) VALUES (
+    v_instructor_id, '<INSTANCE_ID>',
+    'authenticated', 'authenticated',
+    '<INSTRUCTOR_EMAIL>', v_pw,
+    now(),
+    '{"provider":"email","providers":["email"]}',
+    jsonb_build_object('first_name', '<INSTRUCTOR_FIRST_NAME>', 'last_name', '<INSTRUCTOR_LAST_NAME>'),
+    now(), now(), '', '', '', ''
+  );
+
+  INSERT INTO auth.identities (
+    id, user_id, provider_id, identity_data, provider,
+    last_sign_in_at, created_at, updated_at
+  ) VALUES (
+    gen_random_uuid(), v_instructor_id, v_instructor_id,
+    jsonb_build_object('sub', v_instructor_id::text, 'email', '<INSTRUCTOR_EMAIL>'),
+    'email', now(), now(), now()
+  );
+
+  INSERT INTO public.profiles (id, role_id, email, first_name, last_name, bio, is_active)
+  VALUES (
+    v_instructor_id, v_instr_role, '<INSTRUCTOR_EMAIL>',
+    '<INSTRUCTOR_FIRST_NAME>', '<INSTRUCTOR_LAST_NAME>',
+    '<INSTRUCTOR_BIO>', true
+  );
+
+  -- ---- Student ----
+  INSERT INTO auth.users (
+    id, instance_id, aud, role, email, encrypted_password,
+    email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+    created_at, updated_at, confirmation_token, recovery_token,
+    email_change_token_new, email_change
+  ) VALUES (
+    v_student_id, '<INSTANCE_ID>',
+    'authenticated', 'authenticated',
+    '<STUDENT_EMAIL>', v_pw,
+    now(),
+    '{"provider":"email","providers":["email"]}',
+    jsonb_build_object('first_name', '<STUDENT_FIRST_NAME>', 'last_name', '<STUDENT_LAST_NAME>'),
+    now(), now(), '', '', '', ''
+  );
+
+  INSERT INTO auth.identities (
+    id, user_id, provider_id, identity_data, provider,
+    last_sign_in_at, created_at, updated_at
+  ) VALUES (
+    gen_random_uuid(), v_student_id, v_student_id,
+    jsonb_build_object('sub', v_student_id::text, 'email', '<STUDENT_EMAIL>'),
+    'email', now(), now(), now()
+  );
+
+  INSERT INTO public.profiles (id, role_id, email, first_name, last_name, is_active)
+  VALUES (
+    v_student_id, v_student_role, '<STUDENT_EMAIL>',
+    '<STUDENT_FIRST_NAME>', '<STUDENT_LAST_NAME>', true
+  );
+END
+$$;
+
+-- ============================================================
+-- 6. DEMO CONTENT
+-- ============================================================
+DO $$
+DECLARE
+  v_instructor_id uuid := '<INSTRUCTOR_UUID>';
+  v_student_id    uuid := '<STUDENT_UUID>';
+  v_category_id   uuid;
+  v_course_id     uuid;
+  v_module_id     uuid;
+BEGIN
+  -- Idempotent: skip if course exists
+  IF EXISTS (SELECT 1 FROM public.courses WHERE code = '<COURSE_CODE>') THEN
+    RAISE NOTICE 'Demo course <COURSE_CODE> already seeded — skipping';
+    RETURN;
+  END IF;
+
+  -- Category
+  INSERT INTO public.categories (name, slug)
+  VALUES ('<CATEGORY_NAME>', '<CATEGORY_SLUG>')
+  ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+  RETURNING id INTO v_category_id;
+
+  -- Course
+  INSERT INTO public.courses (
+    instructor_id, category_id, title, code, description,
+    learning_objectives, status, enrollment_key, start_date, end_date
+  ) VALUES (
+    v_instructor_id, v_category_id,
+    '<COURSE_TITLE>', '<COURSE_CODE>',
+    '<COURSE_DESCRIPTION>',
+    ARRAY[
+      '<COURSE_OBJECTIVE_1>',
+      '<COURSE_OBJECTIVE_2>',
+      '<COURSE_OBJECTIVE_3>'
+    ],
+    'PUBLISHED', '<COURSE_ENROLLMENT_KEY>', '<COURSE_START_DATE>', '<COURSE_END_DATE>'
+  )
+  RETURNING id INTO v_course_id;
+
+  -- Module
+  INSERT INTO public.modules (
+    course_id, title, description, position, is_published
+  ) VALUES (
+    v_course_id, '<MODULE_TITLE>',
+    '<MODULE_DESCRIPTION>', 1, true
+  )
+  RETURNING id INTO v_module_id;
+
+  -- Lesson
+  INSERT INTO public.lessons (
+    module_id, course_id, title, content, position, is_published
+  ) VALUES (
+    v_module_id, v_course_id,
+    '<LESSON_TITLE>',
+    '<LESSON_CONTENT>',
+    1, true
+  );
+
+  -- Enrollment
+  INSERT INTO public.enrollments (course_id, student_id, status)
+  VALUES (v_course_id, v_student_id, 'ACTIVE');
+END
+$$;

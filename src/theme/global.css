@@ -1,0 +1,14 @@
+/* src/theme/global.css — imported after design-tokens.css */
+.page-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4, 1rem);
+  width: 100%;
+  max-width: var(--plumi-content-max-width, 1100px);
+  padding: var(--plumi-page-padding, var(--size-4, 1rem));
+  margin-inline: auto;
+}
+
+@media (max-width: 767px) {
+  .page-shell { padding: var(--size-3, 0.75rem); }
+}
