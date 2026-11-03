@@ -7,11 +7,18 @@
       </ion-refresher>
 
       <div class="page-shell">
-        <PageHeader title="Assignments" subtitle="All assignments across your courses" />
+        <PageHeader title="Assignments" subtitle="All assignments across your courses">
+          <template #actions>
+            <ion-button size="small" @click="$router.push({ name: 'instructor-courses' })">
+              <ion-icon slot="start" :icon="addOutline" /> New
+            </ion-button>
+          </template>
+        </PageHeader>
 
         <LoadingState v-if="loading" />
         <ErrorState v-else-if="error" :message="error" @retry="load" />
-        <EmptyState v-else-if="!items.length" title="No assignments" message="Create assignments from a course page." :icon="documentTextOutline" />
+        <EmptyState v-else-if="!items.length" title="No assignments"
+          message="Create assignments from a course page." :icon="documentTextOutline" />
 
         <ul v-else class="asg-rows">
           <li v-for="a in items" :key="a.id" class="asg-row">
@@ -36,9 +43,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import {
-  IonPage, IonContent, IonRefresher, IonRefresherContent, IonButton,
+  IonPage, IonContent, IonRefresher, IonRefresherContent, IonButton, IonIcon,
 } from '@ionic/vue';
-import { documentTextOutline } from 'ionicons/icons';
+import { documentTextOutline, addOutline } from 'ionicons/icons';
 import PageHeader from '@/components/common/PageHeader.vue';
 import LoadingState from '@/components/common/LoadingState.vue';
 import ErrorState from '@/components/common/ErrorState.vue';
@@ -46,7 +53,10 @@ import EmptyState from '@/components/common/EmptyState.vue';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
 
-interface Row { id: string; title: string; due_at: string | null; max_score: number; course_id: string; course_title: string; }
+interface Row {
+  id: string; title: string; due_at: string | null; max_score: number;
+  course_id: string; course_title: string;
+}
 
 const auth = useAuthStore();
 const items = ref<Row[]>([]);
@@ -56,24 +66,34 @@ const error = ref<string | null>(null);
 async function load() {
   error.value = null;
   try {
-    let q = supabase
+    if (!auth.user) return;
+    // Query only assignments belonging to courses owned by this instructor.
+    // RLS should also enforce this; scoping the query avoids relying on RLS alone.
+    const { data, error: err } = await supabase
       .from('assignments')
-      .select('id, title, due_at, max_score, course_id, courses!inner ( title, instructor_id )')
+      .select(`
+        id, title, due_at, max_score, course_id,
+        courses!inner ( title, instructor_id )
+      `)
       .is('deleted_at', null)
+      .eq('courses.instructor_id', auth.user.id)
       .order('due_at', { ascending: true, nullsFirst: false });
-
-    if (auth.role === 'instructor') q = q.eq('courses.instructor_id', auth.user!.id);
-
-    const { data, error: err } = await q;
     if (err) throw err;
+
     items.value = (data ?? []).map((a) => {
       const course = (a as { courses: { title: string } | { title: string }[] }).courses;
       const c = Array.isArray(course) ? course[0] : course;
-      return { id: a.id, title: a.title, due_at: a.due_at, max_score: a.max_score, course_id: a.course_id, course_title: c?.title ?? 'Course' };
+      return {
+        id: a.id, title: a.title, due_at: a.due_at,
+        max_score: a.max_score, course_id: a.course_id,
+        course_title: c?.title ?? 'Course',
+      };
     });
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Failed to load.';
-  } finally { loading.value = false; }
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function onRefresh(ev: CustomEvent) {

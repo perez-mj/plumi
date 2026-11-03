@@ -77,6 +77,7 @@ import ErrorState from '@/components/common/ErrorState.vue';
 import { useAuthStore } from '@/stores/authStore';
 import { listCourses } from '@/services/courses';
 import { listAssignmentsForCourse } from '@/services/assignments';
+import { supabase } from '@/lib/supabase';
 import type { CourseWithMeta, Assignment } from '@/types/app';
 
 const auth = useAuthStore();
@@ -94,22 +95,57 @@ function formatDate(iso: string | null) {
 async function load() {
   error.value = null;
   try {
-    const myCourses = await listCourses({ instructorId: auth.user?.id });
+    if (!auth.user) return;
+    const myCourses = await listCourses({ instructorId: auth.user.id });
     courses.value = myCourses;
     stats.value.courses = myCourses.length;
 
-    if (myCourses.length) {
-      const allAssignments = await Promise.all(myCourses.map((c) => listAssignmentsForCourse(c.id)));
-      const flat = allAssignments.flat();
-      stats.value.assignments = flat.length;
-      upcoming.value = flat
-        .filter((a) => a.due_at && new Date(a.due_at) >= new Date())
-        .sort((a, b) => (a.due_at ?? '').localeCompare(b.due_at ?? ''))
-        .slice(0, 5);
+    if (!myCourses.length) {
+      stats.value.students = 0;
+      stats.value.assignments = 0;
+      stats.value.pendingGrades = 0;
+      upcoming.value = [];
+      return;
+    }
+
+    const courseIds = myCourses.map((c) => c.id);
+
+    // Assignments across my courses
+    const allAssignments = await Promise.all(courseIds.map((id) => listAssignmentsForCourse(id)));
+    const flat = allAssignments.flat();
+    stats.value.assignments = flat.length;
+    upcoming.value = flat
+      .filter((a) => a.due_at && new Date(a.due_at) >= new Date())
+      .sort((a, b) => (a.due_at ?? '').localeCompare(b.due_at ?? ''))
+      .slice(0, 5);
+
+    // Distinct enrolled students
+    const { data: enrollments, error: eErr } = await supabase
+      .from('enrollments')
+      .select('student_id')
+      .in('course_id', courseIds)
+      .eq('status', 'ACTIVE');
+    if (eErr) throw eErr;
+    stats.value.students = new Set((enrollments ?? []).map((e) => e.student_id)).size;
+
+    // Pending grades: submissions with SUBMITTED or LATE across my assignments
+    const assignmentIds = flat.map((a) => a.id);
+    if (!assignmentIds.length) {
+      stats.value.pendingGrades = 0;
+    } else {
+      const { count, error: pErr } = await supabase
+        .from('submissions')
+        .select('id', { count: 'exact', head: true })
+        .in('assignment_id', assignmentIds)
+        .in('status', ['SUBMITTED', 'LATE']);
+      if (pErr) throw pErr;
+      stats.value.pendingGrades = count ?? 0;
     }
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Failed to load dashboard.';
-  } finally { loading.value = false; }
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function onRefresh(ev: CustomEvent) {

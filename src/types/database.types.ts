@@ -1,4 +1,3 @@
-// src/types/database.types.ts
 export type Json =
   | string
   | number
@@ -12,6 +11,31 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.18"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -1408,6 +1432,36 @@ export type Database = {
     }
     Functions: {
       current_role_name: { Args: never; Returns: string }
+      get_display_names: {
+        Args: { p_ids: string[] }
+        Returns: {
+          avatar_url: string
+          first_name: string
+          id: string
+          last_name: string
+        }[]
+      }
+      is_admin: { Args: never; Returns: boolean }
+      is_conversation_member: {
+        Args: { p_conversation_id: string }
+        Returns: boolean
+      }
+      is_enrolled: { Args: { p_course_id: string }; Returns: boolean }
+      notify_user: {
+        Args: {
+          p_actor_id: string
+          p_body: string
+          p_data: Json
+          p_entity_id: string
+          p_entity_type: string
+          p_link: string
+          p_title: string
+          p_type: Database["public"]["Enums"]["NotificationType"]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      teaches_course: { Args: { p_course_id: string }; Returns: boolean }
     }
     Enums: {
       AiDetailLevel: "SHORT" | "STANDARD" | "COMPREHENSIVE"
@@ -1574,6 +1628,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       AiDetailLevel: ["SHORT", "STANDARD", "COMPREHENSIVE"],

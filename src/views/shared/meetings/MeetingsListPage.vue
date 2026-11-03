@@ -7,7 +7,17 @@
       </ion-refresher>
 
       <div class="page-shell">
-        <PageHeader title="Meetings" subtitle="Virtual classes and meetings" />
+        <PageHeader title="Meetings" subtitle="Virtual classes and meetings">
+          <template #actions>
+            <ion-button
+              v-if="auth.role === 'instructor' && instructorCourses.length"
+              size="small"
+              @click="scheduleMeeting"
+            >
+              <ion-icon slot="start" :icon="addOutline" /> Schedule
+            </ion-button>
+          </template>
+        </PageHeader>
 
         <LoadingState v-if="loading" />
         <ErrorState v-else-if="error" :message="error" @retry="load" />
@@ -23,48 +33,76 @@
             <h3 class="meeting__title">{{ m.title }}</h3>
             <p v-if="m.description" class="meeting__desc">{{ m.description }}</p>
             <p class="meeting__time">{{ formatDate(m.scheduled_at) }} · {{ m.duration }} min</p>
-            <ion-button size="small" :disabled="m.status === 'ENDED' || m.status === 'CANCELLED'" @click="join(m)">
-              {{ m.status === 'LIVE' ? 'Join now' : 'Join' }}
+            <ion-button size="small"
+              :disabled="m.status === 'ENDED' || m.status === 'CANCELLED' || joiningId === m.id"
+              @click="join(m)">
+              {{ joiningId === m.id ? 'Joining…' : (m.status === 'LIVE' ? 'Join now' : 'Join') }}
             </ion-button>
           </article>
         </div>
       </div>
+
+      <ion-action-sheet
+        :is-open="showCoursePicker"
+        header="Schedule a meeting for…"
+        :buttons="coursePickerButtons"
+        @didDismiss="showCoursePicker = false"
+      />
     </ion-content>
   </ion-page>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import {
-  IonPage, IonContent, IonRefresher, IonRefresherContent, IonButton, IonIcon,
+  IonPage, IonContent, IonRefresher, IonRefresherContent,
+  IonButton, IonIcon, IonActionSheet,
 } from '@ionic/vue';
-import { videocamOutline } from 'ionicons/icons';
+import { videocamOutline, addOutline } from 'ionicons/icons';
 import PageHeader from '@/components/common/PageHeader.vue';
 import LoadingState from '@/components/common/LoadingState.vue';
 import ErrorState from '@/components/common/ErrorState.vue';
 import EmptyState from '@/components/common/EmptyState.vue';
-import { supabase } from '@/lib/supabase';
-
-interface Meeting {
-  id: string; title: string; description: string | null; scheduled_at: string;
-  duration: number; room_name: string; status: 'SCHEDULED' | 'LIVE' | 'ENDED' | 'CANCELLED';
-}
+import { useAuthStore } from '@/stores/authStore';
+import { listCourses, type CourseWithMeta } from '@/services/courses';
+import { listMyMeetings, joinMeeting, type MeetingRow } from '@/services/meetings';
 
 const router = useRouter();
-const meetings = ref<Meeting[]>([]);
+const auth = useAuthStore();
+
+const meetings = ref<MeetingRow[]>([]);
+const instructorCourses = ref<CourseWithMeta[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
+const joiningId = ref<string | null>(null);
+const showCoursePicker = ref(false);
+
+const coursePickerButtons = computed(() => [
+  ...instructorCourses.value.map((c) => ({
+    text: c.title,
+    handler: () => {
+      router.push({ name: 'instructor-meeting-new', params: { id: c.id } });
+    },
+  })),
+  { text: 'Cancel', role: 'cancel' },
+]);
 
 async function load() {
   error.value = null;
   try {
-    const { data, error: err } = await supabase.from('meetings').select('*').order('scheduled_at', { ascending: true });
-    if (err) throw err;
-    meetings.value = (data ?? []) as Meeting[];
+    meetings.value = await listMyMeetings();
+    if (auth.role === 'instructor' && auth.user?.id) {
+      const mine = await listCourses({ instructorId: auth.user.id });
+      instructorCourses.value = mine.filter((c) => c.status !== 'ARCHIVED');
+    } else {
+      instructorCourses.value = [];
+    }
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Failed to load.';
-  } finally { loading.value = false; }
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function onRefresh(ev: CustomEvent) {
@@ -72,8 +110,24 @@ async function onRefresh(ev: CustomEvent) {
   (ev.target as HTMLIonRefresherElement).complete();
 }
 
-function join(m: Meeting) {
-  router.push({ name: 'meeting-room', params: { id: m.id }, query: { room: m.room_name } });
+function scheduleMeeting() {
+  if (instructorCourses.value.length === 1) {
+    router.push({ name: 'instructor-meeting-new', params: { id: instructorCourses.value[0].id } });
+    return;
+  }
+  showCoursePicker.value = true;
+}
+
+async function join(m: MeetingRow) {
+  joiningId.value = m.id;
+  try {
+    const { room_name } = await joinMeeting(m.id);
+    router.push({ name: 'meeting-room', params: { id: m.id }, query: { room: room_name } });
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : 'Could not join meeting.';
+  } finally {
+    joiningId.value = null;
+  }
 }
 
 function formatDate(iso: string) {

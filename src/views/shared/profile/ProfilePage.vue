@@ -6,7 +6,10 @@
         <PageHeader title="Profile" subtitle="Manage your account information" />
 
         <section class="profile__card">
-          <div class="profile__avatar">{{ initials }}</div>
+          <div class="profile__avatar">
+            <img v-if="form.avatarUrl" :src="form.avatarUrl" :alt="auth.displayName" />
+            <span v-else>{{ initials }}</span>
+          </div>
           <div class="profile__meta">
             <p class="profile__name">{{ auth.displayName }}</p>
             <p class="profile__email">{{ auth.user?.email }}</p>
@@ -19,6 +22,7 @@
           <form @submit.prevent="save" class="profile__form">
             <label>First name <input v-model="form.firstName" required /></label>
             <label>Last name <input v-model="form.lastName" required /></label>
+            <label>Avatar URL <input v-model="form.avatarUrl" placeholder="https://…" /></label>
             <label>Bio <textarea v-model="form.bio" rows="3" maxlength="500" /></label>
             <div class="profile__actions">
               <ion-button type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save changes' }}</ion-button>
@@ -40,20 +44,24 @@ import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
 
 const auth = useAuthStore();
-const form = ref({ firstName: '', lastName: '', bio: '' });
+const form = ref({ firstName: '', lastName: '', bio: '', avatarUrl: '' });
 const saving = ref(false);
 const savedMessage = ref<string | null>(null);
 const errorMessage = ref<string | null>(null);
 
 const initials = computed(() =>
-  [auth.user?.firstName, auth.user?.lastName].filter(Boolean)
-    .map((s) => s!.charAt(0)).join('').toUpperCase() || 'U',
+  [form.value.firstName, form.value.lastName]
+    .filter(Boolean)
+    .map((s) => s!.charAt(0))
+    .join('')
+    .toUpperCase() || 'U',
 );
 
 onMounted(() => {
   form.value.firstName = auth.user?.firstName ?? '';
   form.value.lastName = auth.user?.lastName ?? '';
   form.value.bio = auth.user?.bio ?? '';
+  form.value.avatarUrl = auth.user?.avatarUrl ?? '';
 });
 
 async function save() {
@@ -68,6 +76,7 @@ async function save() {
         first_name: form.value.firstName.trim(),
         last_name: form.value.lastName.trim(),
         bio: form.value.bio.trim() || null,
+        avatar_url: form.value.avatarUrl.trim() || null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', auth.user.id);
@@ -85,7 +94,8 @@ async function save() {
 <style scoped>
 .page-shell--narrow { max-width: 720px; }
 .profile__card { display: flex; align-items: center; gap: var(--size-4, 1rem); padding: var(--size-4, 1rem); border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-lg); background: var(--plumi-surface); }
-.profile__avatar { display: grid; place-items: center; width: 72px; height: 72px; border-radius: var(--radius-round); background: var(--plumi-primary-soft); color: var(--plumi-primary); font-size: 24px; font-weight: var(--plumi-weight-bold); }
+.profile__avatar { display: grid; place-items: center; width: 72px; height: 72px; border-radius: var(--radius-round); background: var(--plumi-primary-soft); color: var(--plumi-primary); font-size: 24px; font-weight: var(--plumi-weight-bold); overflow: hidden; flex: 0 0 auto; }
+.profile__avatar img { width: 100%; height: 100%; object-fit: cover; }
 .profile__name { margin: 0; font-size: var(--plumi-text-lg); font-weight: var(--plumi-weight-semibold); }
 .profile__email { margin: 2px 0; font-size: var(--plumi-text-sm); color: var(--plumi-text-muted); }
 .profile__role { margin: 0; font-size: var(--plumi-text-xs); color: var(--plumi-primary); text-transform: uppercase; letter-spacing: 0.06em; }

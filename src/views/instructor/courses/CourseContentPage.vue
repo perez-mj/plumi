@@ -31,7 +31,15 @@
               <ion-button size="small" fill="outline" @click="$router.push({ name: 'instructor-course-announcements', params: { id: course.id } })">
                 Announcements
               </ion-button>
+              <ion-button size="small" fill="outline" @click="$router.push({ name: 'instructor-meeting-new', params: { id: course.id } })">
+                Schedule Meeting
+              </ion-button>
+              <ion-button size="small" fill="outline" :disabled="openingChat" @click="openCourseChat">
+                <ion-icon slot="start" :icon="chatbubblesOutline" />
+                {{ openingChat ? 'Opening…' : 'Course Chat' }}
+              </ion-button>
             </div>
+            <p v-if="chatError" class="course-content__error">{{ chatError }}</p>
           </header>
 
           <section class="course-content__panel">
@@ -75,6 +83,30 @@
                 <p v-else class="module__empty">No lessons yet.</p>
               </article>
             </div>
+          </section>
+
+          <section class="course-content__panel">
+            <div class="course-content__panel-head">
+              <h2>Assignments</h2>
+              <ion-button size="small" @click="$router.push({ name: 'instructor-assignment-new', params: { courseId: course.id } })">
+                <ion-icon slot="start" :icon="addOutline" /> Assignment
+              </ion-button>
+            </div>
+            <EmptyState v-if="!assignments.length" title="No assignments" message="Create assignments for this course." :icon="documentTextOutline" />
+            <ul v-else class="assignments">
+              <li v-for="a in assignments" :key="a.id" class="assignment">
+                <div class="assignment__body">
+                  <p class="assignment__title">{{ a.title }}</p>
+                  <p class="assignment__meta">{{ formatDate(a.due_at) }} · {{ a.max_score }} pts · {{ a.is_published ? 'Published' : 'Draft' }}</p>
+                </div>
+                <ion-button size="small" fill="outline" @click="$router.push({ name: 'instructor-assignment-edit', params: { courseId: course.id, id: a.id } })">
+                  Edit
+                </ion-button>
+                <ion-button size="small" @click="$router.push({ name: 'instructor-submissions', params: { id: a.id } })">
+                  Submissions
+                </ion-button>
+              </li>
+            </ul>
           </section>
 
           <section class="course-content__panel">
@@ -145,14 +177,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import {
   IonPage, IonContent, IonRefresher, IonRefresherContent, IonButton, IonIcon, IonModal,
 } from '@ionic/vue';
 import {
   arrowBackOutline, addOutline, playCircleOutline, documentOutline,
-  trashOutline, cloudUploadOutline, albumsOutline,
+  documentTextOutline, trashOutline, cloudUploadOutline, albumsOutline, chatbubblesOutline,
 } from 'ionicons/icons';
 import LoadingState from '@/components/common/LoadingState.vue';
 import ErrorState from '@/components/common/ErrorState.vue';
@@ -162,13 +194,38 @@ import {
   createModule, deleteModule, createLesson, deleteLesson,
   uploadMaterial, deleteMaterial,
 } from '@/services/content';
+import { openCourseConversation } from '@/services/messaging';
+import type { MaterialType } from '@/types/app';
 
 const route = useRoute();
+const router = useRouter();
 const courseId = computed(() => (route.params.id as string) || null);
-const { course, modules, materials, loading, error, reload } = useCourse(courseId);
+const {
+  course, modules, materials, assignments,
+  loading, error, reload,
+} = useCourse(courseId);
 
 const totalLessons = computed(() => modules.value.reduce((n, m) => n + m.lessons.length, 0));
 
+/* ------------------ Course chat ------------------ */
+const openingChat = ref(false);
+const chatError = ref<string | null>(null);
+
+async function openCourseChat() {
+  if (!course.value) return;
+  openingChat.value = true;
+  chatError.value = null;
+  try {
+    const convId = await openCourseConversation(course.value.id);
+    router.push({ name: 'messages', query: { c: convId } });
+  } catch (e: unknown) {
+    chatError.value = e instanceof Error ? e.message : 'Could not open course chat.';
+  } finally {
+    openingChat.value = false;
+  }
+}
+
+/* ------------------ Modules ------------------ */
 const showModuleModal = ref(false);
 const newModuleTitle = ref('');
 const newModuleDesc = ref('');
@@ -201,6 +258,7 @@ async function removeModule(id: string) {
   await reload();
 }
 
+/* ------------------ Lessons ------------------ */
 const showLessonModal = ref(false);
 const lessonModuleId = ref<string | null>(null);
 const newLessonTitle = ref('');
@@ -238,6 +296,7 @@ async function removeLesson(id: string) {
   await reload();
 }
 
+/* ------------------ Materials ------------------ */
 const showUploadModal = ref(false);
 const uploadTitle = ref('');
 const uploadFile = ref<File | null>(null);
@@ -248,6 +307,24 @@ function onFileChange(e: Event) {
   if (f) uploadFile.value = f;
 }
 
+function inferMaterialType(file: File): MaterialType {
+  const name = file.name.toLowerCase();
+  const mime = file.type.toLowerCase();
+  if (mime === 'application/pdf' || name.endsWith('.pdf')) return 'PDF';
+  if (
+    mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    name.endsWith('.docx')
+  ) return 'DOCX';
+  if (
+    mime === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+    name.endsWith('.pptx')
+  ) return 'PPTX';
+  if (mime.startsWith('image/')) return 'IMAGE';
+  if (mime.startsWith('video/')) return 'VIDEO';
+  if (mime.startsWith('text/')) return 'TEXT';
+  return 'TEXT';
+}
+
 async function doUpload() {
   if (!courseId.value || !uploadFile.value || !uploadTitle.value.trim()) return;
   uploading.value = true;
@@ -256,10 +333,7 @@ async function doUpload() {
       courseId: courseId.value,
       title: uploadTitle.value.trim(),
       file: uploadFile.value,
-      type: uploadFile.value.type.includes('pdf') ? 'PDF'
-        : uploadFile.value.type.includes('word') ? 'DOCX'
-        : uploadFile.value.type.startsWith('image/') ? 'IMAGE'
-        : 'TEXT',
+      type: inferMaterialType(uploadFile.value),
     });
     showUploadModal.value = false;
     uploadTitle.value = ''; uploadFile.value = null;
@@ -280,7 +354,10 @@ function formatSize(bytes: number | null): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-onMounted(() => { /* composable auto-loads via watch */ });
+function formatDate(iso: string | null) {
+  if (!iso) return 'No deadline';
+  return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' });
+}
 </script>
 
 <style scoped>
@@ -289,6 +366,7 @@ onMounted(() => { /* composable auto-loads via watch */ });
 .course-content__title { margin: 4px 0; font-size: var(--plumi-text-2xl); letter-spacing: -0.03em; }
 .course-content__meta { margin: 0; font-size: var(--plumi-text-sm); color: var(--plumi-text-muted); }
 .course-content__actions { display: flex; gap: var(--size-2, 0.5rem); flex-wrap: wrap; }
+.course-content__error { flex-basis: 100%; margin: var(--size-2) 0 0; font-size: var(--plumi-text-sm); color: var(--plumi-danger); }
 .course-content__panel { padding: var(--size-4, 1rem); border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-lg); background: var(--plumi-surface); }
 .course-content__panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--size-3, 0.75rem); }
 .course-content__panel-head h2 { margin: 0; font-size: var(--plumi-text-md); }
@@ -305,11 +383,11 @@ onMounted(() => { /* composable auto-loads via watch */ });
 .lesson__body { flex: 1; }
 .lesson__title { margin: 0; font-size: var(--plumi-text-sm); }
 .lesson__meta { margin: 0; font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
-.materials { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
-.material { display: flex; align-items: center; gap: var(--size-2, 0.5rem); padding: var(--size-2, 0.5rem); border-radius: var(--plumi-radius-sm); }
-.material__body { flex: 1; }
-.material__title { margin: 0; font-size: var(--plumi-text-sm); }
-.material__meta { margin: 0; font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
+.materials, .assignments { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
+.material, .assignment { display: flex; align-items: center; gap: var(--size-2, 0.5rem); padding: var(--size-2, 0.5rem); border-radius: var(--plumi-radius-sm); }
+.material__body, .assignment__body { flex: 1; }
+.material__title, .assignment__title { margin: 0; font-size: var(--plumi-text-sm); }
+.material__meta, .assignment__meta { margin: 0; font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
 .modal-content { --background: var(--plumi-surface); }
 .modal-inner { padding: var(--size-5, 1.25rem); max-width: 520px; margin-inline: auto; display: flex; flex-direction: column; gap: var(--size-3, 0.75rem); }
 .modal-inner h2 { margin: 0; }

@@ -69,7 +69,8 @@
           </div>
 
           <div class="topbar__actions">
-            <span v-if="!isMobile" class="topbar__greeting">Welcome back</span>
+            <RealtimeStatusBadge :status="realtimeStatus" :show-label="!isMobile" />
+            <NotificationBell />
             <button class="icon-button theme-toggle" type="button"
               :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
               :title="isDark ? 'Light mode' : 'Dark mode'" @click="toggle">
@@ -113,8 +114,12 @@ import {
 
 import { useTheme } from '@/composables/useTheme';
 import { useAuthStore } from '@/stores/authStore';
+import NotificationBell from '@/components/layout/NotificationBell.vue';
+import RealtimeStatusBadge from '@/components/realtime/RealtimeStatusBadge.vue';
+import { useNotifications } from '@/composables/useNotifications';
 
 const { isDark, toggle } = useTheme();
+const { status: realtimeStatus } = useNotifications();
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
@@ -327,7 +332,12 @@ async function confirmLogout() {
   background: transparent;
 }
 
-.sidebar__logo { display: block; width: 100%; height: 100%; object-fit: contain; }
+.sidebar__logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
 
 .sidebar__name {
   overflow: hidden;
@@ -376,8 +386,16 @@ async function confirmLogout() {
   transition: color var(--plumi-duration-fast) ease, background var(--plumi-duration-fast) ease;
 }
 
-.sidebar__link:hover { background: var(--plumi-sidebar-hover); color: var(--plumi-ink); }
-.sidebar__link--active { background: var(--plumi-sidebar-active-bg); color: var(--plumi-sidebar-active-ink); font-weight: var(--plumi-weight-semibold); }
+.sidebar__link:hover {
+  background: var(--plumi-sidebar-hover);
+  color: var(--plumi-ink);
+}
+
+.sidebar__link--active {
+  background: var(--plumi-sidebar-active-bg);
+  color: var(--plumi-sidebar-active-ink);
+  font-weight: var(--plumi-weight-semibold);
+}
 
 .sidebar__link--active::before {
   position: absolute;
@@ -389,8 +407,17 @@ async function confirmLogout() {
   content: "";
 }
 
-.sidebar__icon { flex: 0 0 22px; width: 22px; font-size: 21px; }
-.sidebar__link-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sidebar__icon {
+  flex: 0 0 22px;
+  width: 22px;
+  font-size: 21px;
+}
+
+.sidebar__link-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .sidebar__footer {
   display: flex;
@@ -427,9 +454,29 @@ async function confirmLogout() {
   font-weight: var(--plumi-weight-bold);
 }
 
-.user-card__meta { display: flex; flex: 1; flex-direction: column; min-width: 0; gap: 2px; }
-.user-card__name { overflow: hidden; color: var(--plumi-ink); font-size: var(--plumi-text-sm); font-weight: var(--plumi-weight-semibold); text-overflow: ellipsis; white-space: nowrap; }
-.user-card__role { color: var(--plumi-text-muted); font-size: var(--plumi-text-xs); text-transform: uppercase; letter-spacing: 0.06em; }
+.user-card__meta {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.user-card__name {
+  overflow: hidden;
+  color: var(--plumi-ink);
+  font-size: var(--plumi-text-sm);
+  font-weight: var(--plumi-weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-card__role {
+  color: var(--plumi-text-muted);
+  font-size: var(--plumi-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
 
 .sidebar__action {
   display: flex;
@@ -448,14 +495,40 @@ async function confirmLogout() {
   transition: background var(--plumi-duration-fast) ease, color var(--plumi-duration-fast) ease;
 }
 
-.sidebar__action ion-icon { flex: 0 0 22px; font-size: 20px; }
-.sidebar__action:hover { background: var(--plumi-sidebar-hover); color: var(--plumi-ink); }
-.sidebar__action--logout { color: var(--plumi-danger); }
-.sidebar__action--logout:hover { background: var(--plumi-danger-soft); color: var(--plumi-danger); }
-.sidebar__action:disabled { opacity: 0.55; cursor: not-allowed; }
-.sidebar--collapsed .sidebar__brand { justify-content: center; padding-inline: 0; }
+.sidebar__action ion-icon {
+  flex: 0 0 22px;
+  font-size: 20px;
+}
+
+.sidebar__action:hover {
+  background: var(--plumi-sidebar-hover);
+  color: var(--plumi-ink);
+}
+
+.sidebar__action--logout {
+  color: var(--plumi-danger);
+}
+
+.sidebar__action--logout:hover {
+  background: var(--plumi-danger-soft);
+  color: var(--plumi-danger);
+}
+
+.sidebar__action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sidebar--collapsed .sidebar__brand {
+  justify-content: center;
+  padding-inline: 0;
+}
+
 .sidebar--collapsed .sidebar__link,
-.sidebar--collapsed .sidebar__action { justify-content: center; padding-inline: 0; }
+.sidebar--collapsed .sidebar__action {
+  justify-content: center;
+  padding-inline: 0;
+}
 
 .main {
   display: flex;
@@ -483,9 +556,19 @@ async function confirmLogout() {
 
 .topbar__left,
 .topbar__heading,
-.topbar__actions { display: flex; align-items: center; min-width: 0; }
-.topbar__left { gap: var(--size-3); }
-.topbar__heading { gap: var(--size-3); }
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.topbar__left {
+  gap: var(--size-3);
+}
+
+.topbar__heading {
+  gap: var(--size-3);
+}
 
 .topbar__title {
   margin: 0;
@@ -500,8 +583,14 @@ async function confirmLogout() {
   white-space: nowrap;
 }
 
-.topbar__actions { gap: var(--size-3); }
-.topbar__greeting { color: var(--plumi-text-muted); font-size: var(--plumi-text-sm); }
+.topbar__actions {
+  gap: var(--size-3);
+}
+
+.topbar__greeting {
+  color: var(--plumi-text-muted);
+  font-size: var(--plumi-text-sm);
+}
 
 .icon-button {
   display: inline-grid;
@@ -519,12 +608,22 @@ async function confirmLogout() {
   transition: background var(--plumi-duration-fast) ease, border-color var(--plumi-duration-fast) ease, color var(--plumi-duration-fast) ease;
 }
 
-.icon-button:hover { border-color: var(--plumi-primary); background: var(--plumi-primary-soft); color: var(--plumi-primary); }
+.icon-button:hover {
+  border-color: var(--plumi-primary);
+  background: var(--plumi-primary-soft);
+  color: var(--plumi-primary);
+}
+
 .icon-button:focus-visible,
 .sidebar__action:focus-visible,
-.sidebar__link:focus-visible { outline: 2px solid var(--plumi-primary); outline-offset: 2px; }
+.sidebar__link:focus-visible {
+  outline: 2px solid var(--plumi-primary);
+  outline-offset: 2px;
+}
 
-.user-avatar-button { cursor: pointer; }
+.user-avatar-button {
+  cursor: pointer;
+}
 
 /* ============================================================
    CONTENT AREA — the fix
@@ -569,16 +668,48 @@ async function confirmLogout() {
   animation: plumi-backdrop-in var(--plumi-duration-normal) ease;
 }
 
-.sidebar__mobile-close { display: none; }
+.sidebar__mobile-close {
+  display: none;
+}
 
 @media (max-width: 767px) {
-  .topbar { flex-basis: 60px; height: 60px; padding-inline: var(--size-3); gap: var(--size-2); }
-  .topbar__left { gap: var(--size-2); flex: 1; }
-  .topbar__heading { gap: var(--size-2); }
-  .topbar__title { font-size: var(--plumi-text-lg); }
-  .topbar__actions { gap: var(--size-2); }
-  .topbar__menu { flex-basis: 40px; width: 40px; height: 40px; border-color: transparent; background: transparent; }
-  .theme-toggle { flex-basis: 40px; width: 40px; height: 40px; }
+  .topbar {
+    flex-basis: 60px;
+    height: 60px;
+    padding-inline: var(--size-3);
+    gap: var(--size-2);
+  }
+
+  .topbar__left {
+    gap: var(--size-2);
+    flex: 1;
+  }
+
+  .topbar__heading {
+    gap: var(--size-2);
+  }
+
+  .topbar__title {
+    font-size: var(--plumi-text-lg);
+  }
+
+  .topbar__actions {
+    gap: var(--size-2);
+  }
+
+  .topbar__menu {
+    flex-basis: 40px;
+    width: 40px;
+    height: 40px;
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .theme-toggle {
+    flex-basis: 40px;
+    width: 40px;
+    height: 40px;
+  }
 
   .sidebar {
     position: fixed;
@@ -598,20 +729,72 @@ async function confirmLogout() {
     transition: transform var(--plumi-duration-normal) var(--plumi-easing), visibility var(--plumi-duration-normal);
   }
 
-  .sidebar--collapsed { flex-basis: auto; width: var(--plumi-mobile-drawer-width); max-width: 300px; padding-inline: var(--size-3); }
-  .sidebar--mobile-open { transform: translateX(0); visibility: visible; pointer-events: auto; transition: transform var(--plumi-duration-normal) var(--plumi-easing), visibility 0s; }
+  .sidebar--collapsed {
+    flex-basis: auto;
+    width: var(--plumi-mobile-drawer-width);
+    max-width: 300px;
+    padding-inline: var(--size-3);
+  }
+
+  .sidebar--mobile-open {
+    transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+    transition: transform var(--plumi-duration-normal) var(--plumi-easing), visibility 0s;
+  }
+
   .sidebar__brand,
-  .sidebar--collapsed .sidebar__brand { justify-content: flex-start; padding-inline: var(--size-2); margin-bottom: var(--size-5); }
+  .sidebar--collapsed .sidebar__brand {
+    justify-content: flex-start;
+    padding-inline: var(--size-2);
+    margin-bottom: var(--size-5);
+  }
+
   .sidebar--collapsed .sidebar__link,
-  .sidebar--collapsed .sidebar__action { justify-content: flex-start; padding-inline: var(--size-3); }
-  .sidebar--collapsed .sidebar__link-label { display: inline; }
-  .sidebar__mobile-close { display: inline-grid; flex: 0 0 36px; width: 36px; height: 36px; margin-inline-start: auto; border-color: transparent; background: transparent; }
-  .user-avatar-button { flex-basis: 36px; width: 36px; height: 36px; }
+  .sidebar--collapsed .sidebar__action {
+    justify-content: flex-start;
+    padding-inline: var(--size-3);
+  }
+
+  .sidebar--collapsed .sidebar__link-label {
+    display: inline;
+  }
+
+  .sidebar__mobile-close {
+    display: inline-grid;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    margin-inline-start: auto;
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .user-avatar-button {
+    flex-basis: 36px;
+    width: 36px;
+    height: 36px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sidebar, .sidebar--mobile-open, .icon-button, .sidebar__link, .sidebar__action { transition: none; }
+
+  .sidebar,
+  .sidebar--mobile-open,
+  .icon-button,
+  .sidebar__link,
+  .sidebar__action {
+    transition: none;
+  }
 }
 
-@keyframes plumi-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes plumi-backdrop-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
 </style>
