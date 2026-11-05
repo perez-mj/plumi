@@ -31,4 +31,9 @@ defineEmits<{ (e: 'retry'): void }>();
 .err__body { flex: 1; min-width: 0; }
 .err__title { margin: 0 0 2px; font-size: var(--plumi-text-sm); color: var(--plumi-danger); }
 .err__msg { margin: 0; font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
+
+.err { flex-wrap:wrap; padding:20px; gap:16px; border-radius:16px; }
+.err__msg { overflow-wrap:anywhere; line-height:1.6; }
+@media(max-width:480px) { .err :deep(ion-button) { margin-left:40px; } }
+
 </style>

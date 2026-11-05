@@ -29,4 +29,10 @@ defineProps<{ title: string; message: string; icon: string }>();
 .empty__icon { font-size: 42px; color: var(--plumi-text-subtle); }
 .empty__title { margin: 0; font-size: var(--plumi-text-lg); color: var(--plumi-ink); }
 .empty__text { margin: 0; max-width: 42ch; color: var(--plumi-text-muted); font-size: var(--plumi-text-sm); }
+
+.empty { min-height:260px; padding:40px 24px; gap:14px; border-style:solid; box-shadow:var(--plumi-shadow-card); }
+.empty__icon { box-sizing:content-box; padding:18px; border-radius:24px; background:var(--plumi-primary-soft); color:var(--plumi-primary); font-size:30px; }
+.empty__title { font-size:1rem; font-weight:700; letter-spacing:-.02em; }
+.empty__text { line-height:1.7; }
+
 </style>

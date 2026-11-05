@@ -107,4 +107,12 @@ async function save() {
 .profile__actions { display: flex; align-items: center; gap: var(--size-2, 0.5rem); }
 .profile__success { color: var(--plumi-success); font-size: var(--plumi-text-sm); }
 .profile__error { color: var(--plumi-danger); font-size: var(--plumi-text-sm); margin: 0; }
+
+.profile__form-card { min-width:0; padding:var(--plumi-panel-padding); border-radius:20px; box-shadow:var(--plumi-shadow-card); }
+.profile__actions { gap:10px; flex-wrap:wrap; }
+.profile__email { min-width:0; overflow-wrap:anywhere; line-height:1.65; }
+@media(max-width:600px) { .profile__actions > ion-button { flex:1 1 auto; min-height:44px; } }
+.profile__card { padding:28px; background:var(--plumi-primary-subtle); border-radius:24px; }
+.profile__role { display:inline-block; margin-top:10px; padding:5px 10px; border-radius:8px; background:var(--plumi-primary-soft); font-weight:700; }
+.profile__meta { min-width:0; }
 </style>

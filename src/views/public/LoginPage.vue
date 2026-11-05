@@ -4,13 +4,14 @@
     <ion-content :fullscreen="true">
       <div class="auth">
         <div class="auth__brand">
-          <img src="/assets/plumi-bg-transparent-object-512.png" alt="Plumi" class="auth__logo" />
+          <img src="/assets/plumi-brand.jpg" alt="Plumi" class="auth__logo" />
           <h1 class="auth__name">Plumi</h1>
           <p class="auth__tagline">Your AI-assisted learning platform</p>
+          <div class="auth__intro"><span class="auth__eyebrow">YOUR LEARNING WORKSPACE</span><h2>A little more focus.<br />A lot more possibility.</h2><p>Courses, conversations, and progress.<br />Together in one place.</p></div>
         </div>
 
         <form class="auth__form" @submit.prevent="submit">
-          <h2 class="auth__title">Sign in</h2>
+          <div><p class="auth__welcome">Welcome back</p><h2 class="auth__title">Sign in to Plumi</h2><p class="auth__description">Use your school account to continue.</p></div>
           <label>Email <input v-model="email" type="email" required autocomplete="email" /></label>
           <label>Password <input v-model="password" type="password" required autocomplete="current-password" /></label>
           <ion-button type="submit" expand="block" :disabled="loading">
@@ -63,14 +64,32 @@ async function submit() {
 </script>
 
 <style scoped>
-.auth { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--size-4, 1rem); background: var(--plumi-bg); }
-.auth__brand { display: flex; flex-direction: column; align-items: center; gap: var(--size-2, 0.5rem); margin-bottom: var(--size-5, 1.25rem); }
-.auth__logo { width: 72px; height: 72px; object-fit: contain; }
-.auth__name { margin: 0; font-size: var(--plumi-text-2xl); letter-spacing: -0.03em; }
-.auth__tagline { margin: 0; color: var(--plumi-text-muted); font-size: var(--plumi-text-sm); }
-.auth__form { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: var(--size-3, 0.75rem); padding: var(--size-5, 1.25rem); border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-lg); background: var(--plumi-surface); }
-.auth__title { margin: 0; font-size: var(--plumi-text-lg); }
-.auth__form label { display: flex; flex-direction: column; gap: var(--size-1, 0.25rem); font-size: var(--plumi-text-sm); color: var(--plumi-text-muted); }
-.auth__form input { padding: var(--size-2, 0.5rem) var(--size-3, 0.75rem); border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-md); background: var(--plumi-surface); color: var(--plumi-ink); font: inherit; }
-.auth__error { color: var(--plumi-danger); font-size: var(--plumi-text-sm); margin: 0; text-align: center; }
+
+.auth { min-height:100%; display:grid; grid-template-columns:1fr 1fr; padding:40px; gap:clamp(32px,7vw,120px); align-items:center; background:var(--plumi-bg); }
+.auth__brand { align-self:stretch; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; padding:clamp(28px,5vw,72px); border-radius:30px; background:var(--plumi-brand); color:#fff; }
+.auth__logo { width:68px; height:68px; border-radius:18px; object-fit:cover; }
+.auth__name { margin:14px 0 6px; font-size:30px; font-weight:750; letter-spacing:-.045em; }
+.auth__tagline { margin:0; color:#e2c7e5; font-size:13px; line-height:1.6; }
+.auth__intro { margin-top:72px; }
+.auth__eyebrow { color:#dfb9e3; font-size:10px; font-weight:650; letter-spacing:.16em; }
+.auth__intro h2 { margin:18px 0; color:white; font-size:clamp(28px,3.4vw,48px); line-height:1.2; font-weight:650; letter-spacing:-.045em; }
+.auth__intro p { color:#e2c7e5; font-size:14px; line-height:1.9; }
+.auth__form { width:100%; max-width:420px; display:flex; flex-direction:column; gap:24px; margin:40px 0; }
+.auth__welcome { margin:0 0 10px; color:var(--plumi-primary); font-size:12px; font-weight:700; }
+.auth__title { margin:0; font-size:30px; font-weight:750; letter-spacing:-.045em; color:var(--plumi-ink); }
+.auth__description { margin:12px 0 8px; color:var(--plumi-text-muted); font-size:13px; line-height:1.7; }
+.auth__form label { display:flex; flex-direction:column; gap:9px; font-size:13px; font-weight:600; color:var(--plumi-ink); }
+.auth__form input { width:100%; min-height:52px; padding:14px; border:1px solid var(--plumi-border-strong); border-radius:12px; background:var(--plumi-surface); color:var(--plumi-ink); font-size:16px; }
+.auth__form input:focus-visible { outline:0; border-color:var(--plumi-primary); box-shadow:var(--plumi-focus-ring); }
+.auth__form ion-button { min-height:50px; margin:4px 0 0; }
+.auth__error { margin:0; color:var(--plumi-danger); font-size:13px; line-height:1.6; }
+@media(max-width:700px) {
+ .auth { display:flex; flex-direction:column; justify-content:flex-start; gap:0; padding:20px; }
+ .auth__brand { width:100%; padding:24px; border-radius:22px; }
+ .auth__logo { width:48px; height:48px; border-radius:12px; }
+ .auth__name { margin-top:10px; font-size:26px; }
+ .auth__intro { display:none; }
+ .auth__form { margin:32px auto; max-width:440px; gap:22px; }
+ .auth__title { font-size:26px; }
+}
 </style>

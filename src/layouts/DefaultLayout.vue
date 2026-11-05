@@ -1,115 +1,233 @@
-<!-- src/layouts/DefaultLayout.vue -->
 <template>
   <ion-page class="plumi-page">
     <div class="layout" :class="{ 'layout--drawer-open': mobileNavOpen }">
-      <button v-if="mobileNavOpen" class="drawer-backdrop" type="button" aria-label="Close navigation menu"
-        @click="closeMobileNav" />
+      <button
+        v-if="mobileNavOpen"
+        class="drawer-backdrop"
+        type="button"
+        aria-label="Close navigation menu"
+        @click="closeMobileNav"
+      />
 
-      <aside id="plumi-sidebar" class="sidebar" :class="{
-        'sidebar--collapsed': collapsed,
-        'sidebar--mobile-open': mobileNavOpen,
-      }" :aria-hidden="isMobile ? !mobileNavOpen : undefined">
+      <aside
+        id="plumi-sidebar"
+        class="sidebar"
+        :class="{
+          'sidebar--collapsed': collapsed,
+          'sidebar--mobile-open': mobileNavOpen,
+        }"
+        :aria-hidden="isMobile ? !mobileNavOpen : undefined"
+        :inert="isMobile && !mobileNavOpen"
+        @keydown.esc="closeMobileNav"
+        @keydown.tab="trapDrawerFocus"
+      >
         <div class="sidebar__brand">
           <div class="sidebar__brand-mark">
-            <img src="/assets/plumi-bg-transparent-object-512.png" alt="Plumi logo" class="sidebar__logo" />
+            <img
+              src="/assets/plumi-brand.jpg"
+              alt="Plumi logo"
+              class="sidebar__logo"
+            />
           </div>
-          <span v-if="!collapsed" class="sidebar__name">Plumi</span>
-          <button v-if="isMobile" class="icon-button sidebar__mobile-close" type="button"
-            aria-label="Close navigation menu" @click="closeMobileNav">
+
+          <span v-if="!collapsed || isMobile" class="sidebar__name">
+            Plumi
+          </span>
+
+          <button
+            v-if="isMobile"
+            class="icon-button sidebar__mobile-close"
+            type="button"
+            aria-label="Close navigation menu"
+            @click="closeMobileNav"
+          >
             <ion-icon :icon="closeOutline" />
           </button>
         </div>
 
-        <div v-if="!collapsed" class="sidebar__section-label">WORKSPACE</div>
+        <div v-if="!collapsed || isMobile" class="sidebar__section-label">
+          WORKSPACE
+        </div>
 
         <nav class="sidebar__nav" aria-label="Main navigation">
-          <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" class="sidebar__link"
+          <RouterLink
+            v-for="item in navItems"
+            :key="item.to"
+            :to="item.to"
+            class="sidebar__link"
             :class="{ 'sidebar__link--active': isActive(item.to) }"
-            :aria-current="isActive(item.to) ? 'page' : undefined" :title="collapsed ? item.label : undefined"
-            @click="closeMobileNav">
+            :aria-current="isActive(item.to) ? 'page' : undefined"
+            :title="collapsed ? item.label : undefined"
+            @click="closeMobileNav"
+          >
             <ion-icon :icon="item.icon" class="sidebar__icon" />
-            <span v-if="!collapsed" class="sidebar__link-label">{{ item.label }}</span>
+
+            <span v-if="!collapsed || isMobile" class="sidebar__link-label">
+              {{ item.label }}
+            </span>
           </RouterLink>
         </nav>
 
         <div class="sidebar__footer">
-          <div v-if="!collapsed" class="user-card">
+          <div v-if="!collapsed || isMobile" class="user-card">
             <div class="user-card__avatar">{{ userInitials }}</div>
+
             <div class="user-card__meta">
               <span class="user-card__name">{{ displayName }}</span>
               <span class="user-card__role">{{ displayRole }}</span>
             </div>
           </div>
 
-          <button v-if="!isMobile" class="sidebar__action" type="button"
+          <button
+            v-if="!isMobile"
+            class="sidebar__action"
+            type="button"
             :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-            :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'" @click="collapsed = !collapsed">
-            <ion-icon :icon="collapsed ? arrowForwardOutline : arrowBackOutline" />
-            <span v-if="!collapsed">Collapse sidebar</span>
+            :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+            @click="collapsed = !collapsed"
+          >
+            <ion-icon
+              :icon="collapsed ? arrowForwardOutline : arrowBackOutline"
+            />
+            <span v-if="!collapsed || isMobile">Collapse sidebar</span>
           </button>
 
-          <button class="sidebar__action sidebar__action--logout" type="button"
-            :title="collapsed ? 'Log out' : undefined" :disabled="loggingOut" @click="openLogoutModal">
+          <button
+            class="sidebar__action sidebar__action--logout"
+            type="button"
+            :title="collapsed ? 'Log out' : undefined"
+            :disabled="loggingOut"
+            @click="openLogoutModal"
+          >
             <ion-icon :icon="logOutOutline" />
-            <span v-if="!collapsed">{{ loggingOut ? 'Signing out…' : 'Log out' }}</span>
+            <span v-if="!collapsed || isMobile">
+              {{ loggingOut ? 'Signing out…' : 'Log out' }}
+            </span>
           </button>
         </div>
       </aside>
 
-      <main class="main">
+      <main class="main" :inert="isMobile && mobileNavOpen">
         <header class="topbar">
           <div class="topbar__left">
-            <button v-if="isMobile" class="icon-button topbar__menu" type="button" aria-label="Open navigation menu"
-              aria-controls="plumi-sidebar" :aria-expanded="mobileNavOpen" @click="openMobileNav">
+            <button
+              v-if="isMobile"
+              class="icon-button topbar__menu"
+              type="button"
+              aria-label="Open navigation menu"
+              aria-controls="plumi-sidebar"
+              :aria-expanded="mobileNavOpen"
+              @click="openMobileNav"
+            >
               <ion-icon :icon="menuOutline" />
             </button>
+
             <div class="topbar__heading">
-              <h1 class="topbar__title">{{ pageTitle }}</h1>
+              <span class="topbar__eyebrow">
+                {{ displayRole }} workspace
+              </span>
+              <p class="topbar__title">{{ pageTitle }}</p>
             </div>
           </div>
 
           <div class="topbar__actions">
-            <RealtimeStatusBadge :status="realtimeStatus" :show-label="!isMobile" />
+            <RealtimeStatusBadge
+              :status="realtimeStatus"
+              :show-label="!isMobile"
+            />
+
             <NotificationBell />
-            <button class="icon-button theme-toggle" type="button"
-              :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
-              :title="isDark ? 'Light mode' : 'Dark mode'" @click="toggle">
+
+            <button
+              class="icon-button theme-toggle"
+              type="button"
+              :aria-label="
+                isDark ? 'Switch to light mode' : 'Switch to dark mode'
+              "
+              :title="isDark ? 'Light mode' : 'Dark mode'"
+              @click="toggle"
+            >
               <ion-icon :icon="isDark ? sunnyOutline : moonOutline" />
             </button>
-            <button v-if="isMobile" class="user-avatar-button" type="button"
-              aria-label="Open navigation and account menu" @click="openMobileNav">
+
+            <button
+              v-if="isMobile"
+              class="user-avatar-button"
+              type="button"
+              aria-label="Open navigation and account menu"
+              @click="openMobileNav"
+            >
               {{ userInitials }}
             </button>
           </div>
         </header>
 
-        <!--
-          The outlet is the ONLY child here. Each routed page owns its own
-          <ion-content> scroll surface AND its own padding, via the
-          .page-shell class documented below.
-        -->
         <div class="content-wrapper">
           <ion-router-outlet class="content-outlet" />
         </div>
+
+        <nav
+          v-if="
+            isMobile &&
+            route.name !== 'messages' &&
+            route.name !== 'meeting-room'
+          "
+          class="mobile-tabs"
+          aria-label="Quick navigation"
+        >
+          <RouterLink
+            v-for="item in mobileNavItems"
+            :key="item.to"
+            :to="item.to"
+            :class="{ 'mobile-tabs__active': isActive(item.to) }"
+            :aria-current="isActive(item.to) ? 'page' : undefined"
+          >
+            <ion-icon :icon="item.icon" />
+            <span>
+              {{
+                item.label === 'My Courses' || item.label === 'All Courses'
+                  ? 'Courses'
+                  : item.label
+              }}
+            </span>
+          </RouterLink>
+        </nav>
       </main>
     </div>
 
-    <ion-alert :is-open="logoutModalOpen" header="Log out?"
-      message="You'll need to sign in again to access your courses." :buttons="logoutButtons" :backdrop-dismiss="false"
-      @didDismiss="logoutModalOpen = false" />
+    <ion-alert
+      :is-open="logoutModalOpen"
+      header="Log out?"
+      message="You'll need to sign in again to access your courses."
+      :buttons="logoutButtons"
+      :backdrop-dismiss="false"
+      @didDismiss="logoutModalOpen = false"
+    />
   </ion-page>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { IonPage, IonIcon, IonRouterOutlet, IonAlert } from '@ionic/vue';
 
 import {
-  homeOutline, bookOutline, chatbubblesOutline, videocamOutline, personOutline,
-  arrowForwardOutline, arrowBackOutline, sunnyOutline, moonOutline, logOutOutline,
-  peopleOutline, documentTextOutline, menuOutline, closeOutline, searchOutline,
-  listOutline, trophyOutline,
+  homeOutline,
+  bookOutline,
+  chatbubblesOutline,
+  videocamOutline,
+  personOutline,
+  arrowForwardOutline,
+  arrowBackOutline,
+  sunnyOutline,
+  moonOutline,
+  logOutOutline,
+  peopleOutline,
+  documentTextOutline,
+  menuOutline,
+  closeOutline,
+  listOutline,
+  trophyOutline,
 } from 'ionicons/icons';
 
 import { useTheme } from '@/composables/useTheme';
@@ -120,6 +238,7 @@ import { useNotifications } from '@/composables/useNotifications';
 
 const { isDark, toggle } = useTheme();
 const { status: realtimeStatus } = useNotifications();
+
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
@@ -133,24 +252,81 @@ const logoutModalOpen = ref(false);
 let mediaQuery: MediaQueryList | undefined;
 
 function syncViewport(event?: MediaQueryListEvent) {
-  isMobile.value = event ? event.matches : window.matchMedia('(max-width: 767px)').matches;
-  if (!isMobile.value) mobileNavOpen.value = false;
+  isMobile.value = event
+    ? event.matches
+    : window.matchMedia('(max-width: 960px)').matches;
+
+  if (!isMobile.value) {
+    mobileNavOpen.value = false;
+  }
 }
 
 onMounted(() => {
-  mediaQuery = window.matchMedia('(max-width: 767px)');
+  mediaQuery = window.matchMedia('(max-width: 960px)');
   syncViewport();
   mediaQuery.addEventListener('change', syncViewport);
 });
-onBeforeUnmount(() => mediaQuery?.removeEventListener('change', syncViewport));
 
-function openMobileNav() { if (isMobile.value) mobileNavOpen.value = true; }
-function closeMobileNav() { mobileNavOpen.value = false; }
+onBeforeUnmount(() => {
+  mediaQuery?.removeEventListener('change', syncViewport);
+});
+
+async function openMobileNav() {
+  if (!isMobile.value) return;
+
+  mobileNavOpen.value = true;
+  await nextTick();
+
+  document
+    .querySelector<HTMLButtonElement>('.sidebar__mobile-close')
+    ?.focus();
+}
+
+function trapDrawerFocus(event: KeyboardEvent) {
+  if (!isMobile.value || !mobileNavOpen.value) return;
+
+  const container = event.currentTarget as HTMLElement;
+
+  const elements = Array.from(
+    container.querySelectorAll<HTMLElement>(
+      'a[href],button:not([disabled])',
+    ),
+  );
+
+  const first = elements[0];
+  const last = elements[elements.length - 1];
+
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last?.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first?.focus();
+  }
+}
+
+function closeMobileNav() {
+  const wasOpen = mobileNavOpen.value;
+  mobileNavOpen.value = false;
+
+  if (wasOpen) {
+    void nextTick(() => {
+      document
+        .querySelector<HTMLButtonElement>('.topbar__menu')
+        ?.focus();
+    });
+  }
+}
 
 const displayName = computed(() => {
   const user = auth.user;
+
   if (!user) return 'Guest';
-  return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
+
+  return (
+    [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+    user.email
+  );
 });
 
 const displayRole = computed(() => {
@@ -160,50 +336,139 @@ const displayRole = computed(() => {
 
 const userInitials = computed(() => {
   const user = auth.user;
+
   if (!user) return 'G';
-  const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+
+  const name = [user.firstName, user.lastName]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+
   if (name) {
-    return name.split(/\s+/).slice(0, 2).map((p) => p.charAt(0)).join('').toUpperCase();
+    return name
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0))
+      .join('')
+      .toUpperCase();
   }
+
   return user.email?.charAt(0).toUpperCase() ?? 'U';
 });
 
 const navItems = computed(() => {
   const role = auth.user?.role ?? 'student';
+
   const shared = [
-    { to: '/app/messages', label: 'Messages', icon: chatbubblesOutline },
-    { to: '/app/meetings', label: 'Meetings', icon: videocamOutline },
-    { to: '/app/profile', label: 'Profile', icon: personOutline },
+    {
+      to: '/app/messages',
+      label: 'Messages',
+      icon: chatbubblesOutline,
+    },
+    {
+      to: '/app/meetings',
+      label: 'Meetings',
+      icon: videocamOutline,
+    },
+    {
+      to: '/app/profile',
+      label: 'Profile',
+      icon: personOutline,
+    },
   ];
+
   if (role === 'admin') {
     return [
-      { to: '/app/admin/dashboard', label: 'Dashboard', icon: homeOutline },
-      { to: '/app/admin/users', label: 'Users', icon: peopleOutline },
-      { to: '/app/admin/courses', label: 'All Courses', icon: bookOutline },
-      { to: '/app/admin/announcements', label: 'Announcements', icon: documentTextOutline },
-      { to: '/app/admin/activity', label: 'Activity Logs', icon: listOutline },
+      {
+        to: '/app/admin/dashboard',
+        label: 'Dashboard',
+        icon: homeOutline,
+      },
+      {
+        to: '/app/admin/users',
+        label: 'Users',
+        icon: peopleOutline,
+      },
+      {
+        to: '/app/admin/courses',
+        label: 'All Courses',
+        icon: bookOutline,
+      },
+      {
+        to: '/app/admin/announcements',
+        label: 'Announcements',
+        icon: documentTextOutline,
+      },
+      {
+        to: '/app/admin/activity',
+        label: 'Activity Logs',
+        icon: listOutline,
+      },
       ...shared,
     ];
   }
+
   if (role === 'instructor') {
     return [
-      { to: '/app/instructor/dashboard', label: 'Dashboard', icon: homeOutline },
-      { to: '/app/instructor/courses', label: 'My Courses', icon: bookOutline },
-      { to: '/app/instructor/assignments', label: 'Assignments', icon: documentTextOutline },
+      {
+        to: '/app/instructor/dashboard',
+        label: 'Dashboard',
+        icon: homeOutline,
+      },
+      {
+        to: '/app/instructor/courses',
+        label: 'My Courses',
+        icon: bookOutline,
+      },
+      {
+        to: '/app/instructor/assignments',
+        label: 'Assignments',
+        icon: documentTextOutline,
+      },
       ...shared,
     ];
   }
+
   return [
-    { to: '/app/student/dashboard', label: 'Dashboard', icon: homeOutline },
-    { to: '/app/student/courses', label: 'My Courses', icon: bookOutline },
-    { to: '/app/student/assignments', label: 'Assignments', icon: documentTextOutline },
-    { to: '/app/student/grades', label: 'Grades', icon: trophyOutline },
+    {
+      to: '/app/student/dashboard',
+      label: 'Dashboard',
+      icon: homeOutline,
+    },
+    {
+      to: '/app/student/courses',
+      label: 'My Courses',
+      icon: bookOutline,
+    },
+    {
+      to: '/app/student/assignments',
+      label: 'Assignments',
+      icon: documentTextOutline,
+    },
+    {
+      to: '/app/student/grades',
+      label: 'Grades',
+      icon: trophyOutline,
+    },
     ...shared,
   ];
 });
 
+const mobileNavItems = computed(() =>
+  navItems.value.filter(
+    (item, index) =>
+      index === 0 ||
+      item.icon === bookOutline ||
+      item.to === '/app/messages' ||
+      item.to === '/app/profile',
+  ),
+);
+
 function isActive(path: string) {
-  if (path === '/app') return route.path === '/app' || route.path === '/app/';
+  if (path === '/app') {
+    return route.path === '/app' || route.path === '/app/';
+  }
+
   return route.path === path || route.path.startsWith(`${path}/`);
 }
 
@@ -240,27 +505,39 @@ const pageTitle = computed(() => {
     'meeting-room': 'Meeting Room',
     profile: 'Profile',
   };
+
   return titles[String(route.name)] ?? 'Plumi';
 });
 
 const logoutButtons = computed(() => [
-  { text: 'Cancel', role: 'cancel', handler: () => { logoutModalOpen.value = false; } },
+  {
+    text: 'Cancel',
+    role: 'cancel',
+    handler: () => {
+      logoutModalOpen.value = false;
+    },
+  },
   {
     text: loggingOut.value ? 'Signing out…' : 'Log out',
     role: 'destructive',
-    handler: () => { void confirmLogout(); },
+    handler: () => {
+      void confirmLogout();
+    },
   },
 ]);
 
 function openLogoutModal() {
   if (loggingOut.value) return;
+
   closeMobileNav();
   logoutModalOpen.value = true;
 }
 
 async function confirmLogout() {
   if (loggingOut.value) return;
+
   loggingOut.value = true;
+
   try {
     await auth.logout();
   } finally {
@@ -289,239 +566,206 @@ async function confirmLogout() {
 }
 
 .sidebar {
-  position: relative;
-  z-index: 2;
   display: flex;
   flex: 0 0 var(--plumi-sidebar-width);
   flex-direction: column;
   width: var(--plumi-sidebar-width);
   min-width: 0;
   height: 100%;
-  padding: var(--size-4) var(--size-3);
-  overflow: hidden;
-  background: var(--plumi-sidebar-bg);
+  padding: 26px 16px 18px;
   border-right: 1px solid var(--plumi-sidebar-border);
-  transition:
-    width var(--plumi-duration-normal) var(--plumi-easing),
-    flex-basis var(--plumi-duration-normal) var(--plumi-easing);
+  background: var(--plumi-sidebar-bg);
+  transition: width 200ms, flex-basis 200ms;
 }
 
 .sidebar--collapsed {
-  flex-basis: var(--plumi-sidebar-collapsed-width);
-  width: var(--plumi-sidebar-collapsed-width);
-  padding-inline: var(--size-2);
+  flex-basis: 84px;
+  width: 84px;
+  padding-inline: 12px;
 }
 
 .sidebar__brand {
   display: flex;
   align-items: center;
-  gap: var(--size-3);
-  min-height: 52px;
-  padding-inline: var(--size-2);
-  margin-bottom: var(--size-6);
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 10px;
+  margin-bottom: 34px;
 }
 
 .sidebar__brand-mark {
   display: grid;
-  flex: 0 0 40px;
-  width: 40px;
-  height: 40px;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   overflow: hidden;
-  border-radius: var(--plumi-radius-md);
-  background: transparent;
+  border-radius: 14px;
+  background: var(--plumi-brand);
 }
 
 .sidebar__logo {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
 }
 
 .sidebar__name {
-  overflow: hidden;
+  font-size: 25px;
+  font-weight: 750;
+  letter-spacing: -0.05em;
   color: var(--plumi-ink);
-  font-family: var(--plumi-font-heading);
-  font-size: var(--plumi-text-xl);
-  font-weight: var(--plumi-weight-bold);
-  letter-spacing: -0.04em;
 }
 
 .sidebar__section-label {
-  padding: 0 var(--size-3);
-  margin-bottom: var(--size-2);
+  padding: 0 14px;
+  margin: 0 0 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
   color: var(--plumi-sidebar-muted);
-  font-size: var(--plumi-text-xs);
-  font-weight: var(--plumi-weight-semibold);
-  letter-spacing: 0.1em;
 }
 
 .sidebar__nav {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--size-1);
+  gap: 6px;
   min-height: 0;
-  overflow-x: hidden;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--plumi-border-strong) transparent;
+  padding: 3px;
 }
 
 .sidebar__link {
   position: relative;
   display: flex;
   align-items: center;
-  gap: var(--size-3);
-  min-height: 46px;
-  padding: 0 var(--size-3);
-  overflow: hidden;
-  border-radius: var(--plumi-radius-md);
+  gap: 12px;
+  min-height: 48px;
+  padding: 12px 14px;
+  border-radius: 12px;
   color: var(--plumi-sidebar-ink);
-  font-size: var(--plumi-text-sm);
-  font-weight: var(--plumi-weight-medium);
   text-decoration: none;
-  white-space: nowrap;
-  transition: color var(--plumi-duration-fast) ease, background var(--plumi-duration-fast) ease;
+  font-size: 13px;
+  font-weight: 550;
+  transition: background 160ms, color 160ms;
 }
 
 .sidebar__link:hover {
   background: var(--plumi-sidebar-hover);
-  color: var(--plumi-ink);
 }
 
 .sidebar__link--active {
   background: var(--plumi-sidebar-active-bg);
   color: var(--plumi-sidebar-active-ink);
-  font-weight: var(--plumi-weight-semibold);
+  font-weight: 700;
 }
 
 .sidebar__link--active::before {
+  content: '';
   position: absolute;
-  inset-block: 10px;
-  inset-inline-start: 0;
+  left: 0;
+  top: 16px;
+  bottom: 16px;
   width: 3px;
-  border-radius: var(--radius-round);
+  border-radius: 4px;
   background: var(--plumi-primary);
-  content: "";
 }
 
 .sidebar__icon {
-  flex: 0 0 22px;
-  width: 22px;
-  font-size: 21px;
-}
-
-.sidebar__link-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: 0 0 20px;
+  font-size: 20px;
 }
 
 .sidebar__footer {
   display: flex;
+  flex-shrink: 0;
   flex-direction: column;
-  gap: var(--size-2);
-  padding-top: var(--size-3);
-  margin-top: var(--size-3);
+  gap: 6px;
+  margin-top: 20px;
+  padding-top: 16px;
   border-top: 1px solid var(--plumi-sidebar-border);
 }
 
 .user-card {
   display: flex;
+  gap: 10px;
   align-items: center;
-  gap: var(--size-2);
-  min-width: 0;
-  padding: var(--size-2);
-  margin-bottom: var(--size-1);
-  border-radius: var(--plumi-radius-md);
-  background: var(--plumi-surface-muted);
+  padding: 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--plumi-border);
+  border-radius: 14px;
+  background: var(--plumi-primary-subtle);
 }
 
 .user-card__avatar,
 .user-avatar-button {
   display: grid;
   flex: 0 0 36px;
+  place-items: center;
   width: 36px;
   height: 36px;
-  place-items: center;
-  border: none;
-  border-radius: var(--radius-round);
+  border: 0;
+  border-radius: 12px;
   background: var(--plumi-primary-soft);
   color: var(--plumi-primary);
-  font-size: var(--plumi-text-sm);
-  font-weight: var(--plumi-weight-bold);
+  font-weight: 700;
+  font-size: 12px;
 }
 
 .user-card__meta {
   display: flex;
-  flex: 1;
   flex-direction: column;
+  gap: 4px;
   min-width: 0;
-  gap: 2px;
 }
 
 .user-card__name {
   overflow: hidden;
-  color: var(--plumi-ink);
-  font-size: var(--plumi-text-sm);
-  font-weight: var(--plumi-weight-semibold);
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .user-card__role {
   color: var(--plumi-text-muted);
-  font-size: var(--plumi-text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 10px;
 }
 
 .sidebar__action {
   display: flex;
   align-items: center;
-  gap: var(--size-3);
+  gap: 12px;
   min-height: 42px;
-  padding: 0 var(--size-3);
-  border: 1px solid transparent;
-  border-radius: var(--plumi-radius-md);
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 10px;
   background: transparent;
   color: var(--plumi-sidebar-ink);
+  text-align: left;
+  font-size: 12px;
   cursor: pointer;
-  font-size: var(--plumi-text-sm);
-  font-weight: var(--plumi-weight-medium);
-  text-align: start;
-  transition: background var(--plumi-duration-fast) ease, color var(--plumi-duration-fast) ease;
 }
 
 .sidebar__action ion-icon {
-  flex: 0 0 22px;
-  font-size: 20px;
+  flex: 0 0 18px;
+  font-size: 18px;
 }
 
 .sidebar__action:hover {
   background: var(--plumi-sidebar-hover);
-  color: var(--plumi-ink);
 }
 
 .sidebar__action--logout {
   color: var(--plumi-danger);
 }
 
-.sidebar__action--logout:hover {
-  background: var(--plumi-danger-soft);
-  color: var(--plumi-danger);
-}
-
-.sidebar__action:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
 .sidebar--collapsed .sidebar__brand {
   justify-content: center;
-  padding-inline: 0;
+  padding: 0;
 }
 
 .sidebar--collapsed .sidebar__link,
@@ -541,104 +785,75 @@ async function confirmLogout() {
 }
 
 .topbar {
-  position: relative;
-  z-index: 1;
   display: flex;
   flex: 0 0 var(--plumi-topbar-height);
   align-items: center;
   justify-content: space-between;
-  gap: var(--size-4);
-  min-width: 0;
-  padding-inline: var(--size-6);
+  gap: 16px;
+  padding: 0 36px;
   border-bottom: 1px solid var(--plumi-border);
   background: var(--plumi-surface);
 }
 
 .topbar__left,
-.topbar__heading,
 .topbar__actions {
   display: flex;
   align-items: center;
+  gap: 12px;
   min-width: 0;
 }
 
-.topbar__left {
-  gap: var(--size-3);
+.topbar__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
 }
 
-.topbar__heading {
-  gap: var(--size-3);
+.topbar__eyebrow {
+  color: var(--plumi-text-muted);
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .topbar__title {
-  margin: 0;
   overflow: hidden;
-  color: var(--plumi-ink);
-  font-family: var(--plumi-font-heading);
-  font-size: var(--plumi-text-xl);
-  font-weight: var(--plumi-weight-bold);
-  letter-spacing: -0.035em;
-  line-height: var(--plumi-line-tight);
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.3;
+  font-weight: 650;
+  letter-spacing: -0.025em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.topbar__actions {
-  gap: var(--size-3);
-}
-
-.topbar__greeting {
-  color: var(--plumi-text-muted);
-  font-size: var(--plumi-text-sm);
-}
-
 .icon-button {
   display: inline-grid;
-  flex: 0 0 var(--plumi-control-height);
-  width: var(--plumi-control-height);
-  height: var(--plumi-control-height);
+  flex: 0 0 40px;
   place-items: center;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: 1px solid var(--plumi-border);
-  border-radius: var(--plumi-radius-md);
+  border-radius: 12px;
   background: var(--plumi-surface);
   color: var(--plumi-ink);
   cursor: pointer;
-  font-size: 21px;
-  transition: background var(--plumi-duration-fast) ease, border-color var(--plumi-duration-fast) ease, color var(--plumi-duration-fast) ease;
+}
+
+.icon-button ion-icon {
+  font-size: 19px;
 }
 
 .icon-button:hover {
-  border-color: var(--plumi-primary);
   background: var(--plumi-primary-soft);
   color: var(--plumi-primary);
 }
 
-.icon-button:focus-visible,
-.sidebar__action:focus-visible,
-.sidebar__link:focus-visible {
-  outline: 2px solid var(--plumi-primary);
-  outline-offset: 2px;
-}
-
-.user-avatar-button {
-  cursor: pointer;
-}
-
-/* ============================================================
-   CONTENT AREA — the fix
-   ============================================================
-   - .content-wrapper is now a *positioning host* only (no padding,
-     no scroll). It fills the space between topbar and viewport.
-   - ion-router-outlet fills it 100%.
-   - Each routed page's <ion-content> is the scroll surface and
-     owns its padding via the .page-shell inner div.
-   ============================================================ */
-
 .content-wrapper {
   position: relative;
   flex: 1;
-  width: 100%;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -652,149 +867,143 @@ async function confirmLogout() {
   height: 100%;
 }
 
-/* Ionic's outlet mounts pages absolutely — make sure our page
-   shells get padding from the page itself, not from this file. */
-
 .drawer-backdrop {
   position: fixed;
-  z-index: var(--plumi-layer-backdrop);
+  z-index: 90;
   inset: 0;
   width: 100%;
   height: 100%;
   padding: 0;
   border: 0;
-  background: rgb(13 16 34 / 52%);
-  cursor: pointer;
-  animation: plumi-backdrop-in var(--plumi-duration-normal) ease;
+  background: rgb(23 10 27 / 48%);
 }
 
-.sidebar__mobile-close {
+.sidebar__mobile-close,
+.mobile-tabs {
   display: none;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 960px) {
   .topbar {
-    flex-basis: 60px;
-    height: 60px;
-    padding-inline: var(--size-3);
-    gap: var(--size-2);
+    flex-basis: auto;
+    min-height: 68px;
+    padding: max(10px, env(safe-area-inset-top)) 16px 10px;
+    gap: 8px;
   }
 
-  .topbar__left {
-    gap: var(--size-2);
-    flex: 1;
-  }
-
-  .topbar__heading {
-    gap: var(--size-2);
+  .topbar__eyebrow {
+    display: none;
   }
 
   .topbar__title {
-    font-size: var(--plumi-text-lg);
+    font-size: 15px;
+  }
+
+  .topbar__left {
+    flex: 1;
+    gap: 10px;
   }
 
   .topbar__actions {
-    gap: var(--size-2);
+    gap: 8px;
   }
 
-  .topbar__menu {
-    flex-basis: 40px;
-    width: 40px;
-    height: 40px;
-    border-color: transparent;
-    background: transparent;
-  }
-
-  .theme-toggle {
-    flex-basis: 40px;
-    width: 40px;
-    height: 40px;
-  }
-
-  .sidebar {
+  .sidebar,
+  .sidebar--collapsed {
     position: fixed;
-    z-index: var(--plumi-layer-drawer);
-    inset-block: 0;
-    inset-inline-start: 0;
-    width: var(--plumi-mobile-drawer-width);
-    max-width: 300px;
+    z-index: 100;
+    inset: 0 auto 0 0;
+    flex-basis: auto;
+    width: min(310px, 87vw);
     height: 100%;
     height: 100dvh;
     padding:
-      max(var(--size-4), env(safe-area-inset-top)) var(--size-3) max(var(--size-3), env(safe-area-inset-bottom));
+      max(24px, env(safe-area-inset-top))
+      16px
+      max(18px, env(safe-area-inset-bottom));
     box-shadow: var(--plumi-shadow-drawer);
-    transform: translateX(-105%);
     visibility: hidden;
-    pointer-events: none;
-    transition: transform var(--plumi-duration-normal) var(--plumi-easing), visibility var(--plumi-duration-normal);
-  }
-
-  .sidebar--collapsed {
-    flex-basis: auto;
-    width: var(--plumi-mobile-drawer-width);
-    max-width: 300px;
-    padding-inline: var(--size-3);
+    transform: translateX(-105%);
+    transition: transform 220ms, visibility 220ms;
   }
 
   .sidebar--mobile-open {
-    transform: translateX(0);
     visibility: visible;
-    pointer-events: auto;
-    transition: transform var(--plumi-duration-normal) var(--plumi-easing), visibility 0s;
+    transform: translateX(0);
   }
 
-  .sidebar__brand,
   .sidebar--collapsed .sidebar__brand {
     justify-content: flex-start;
-    padding-inline: var(--size-2);
-    margin-bottom: var(--size-5);
+    padding: 0 10px;
   }
 
   .sidebar--collapsed .sidebar__link,
   .sidebar--collapsed .sidebar__action {
     justify-content: flex-start;
-    padding-inline: var(--size-3);
-  }
-
-  .sidebar--collapsed .sidebar__link-label {
-    display: inline;
+    padding-inline: 14px;
   }
 
   .sidebar__mobile-close {
     display: inline-grid;
-    flex: 0 0 36px;
-    width: 36px;
-    height: 36px;
-    margin-inline-start: auto;
-    border-color: transparent;
-    background: transparent;
+    margin-left: auto;
+  }
+
+  .sidebar__brand {
+    margin-bottom: 24px;
+  }
+
+  .mobile-tabs {
+    display: grid;
+    flex-shrink: 0;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    padding: 8px 10px max(8px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--plumi-border);
+    background: var(--plumi-surface);
+  }
+
+  .mobile-tabs a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 48px;
+    border-radius: 12px;
+    color: var(--plumi-text-muted);
+    text-decoration: none;
+    font-size: 10px;
+    font-weight: 550;
+  }
+
+  .mobile-tabs ion-icon {
+    font-size: 21px;
+  }
+
+  .mobile-tabs a.mobile-tabs__active {
+    color: var(--plumi-primary);
+    background: var(--plumi-primary-soft);
+    font-weight: 700;
+  }
+}
+
+@media (max-width: 380px) {
+  .topbar {
+    padding-inline: 10px;
+  }
+
+  .topbar__actions {
+    gap: 5px;
   }
 
   .user-avatar-button {
-    flex-basis: 36px;
-    width: 36px;
-    height: 36px;
+    display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-
-  .sidebar,
-  .sidebar--mobile-open,
-  .icon-button,
-  .sidebar__link,
-  .sidebar__action {
+  .sidebar {
     transition: none;
-  }
-}
-
-@keyframes plumi-backdrop-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
   }
 }
 </style>

@@ -119,4 +119,9 @@ onMounted(load);
 .file-input { display: block; margin: var(--size-2, 0.5rem) 0; }
 .actions { display: flex; justify-content: flex-end; }
 .error { color: var(--plumi-danger); font-size: var(--plumi-text-sm); margin: var(--size-2, 0.5rem) 0 0; }
+
+.panel { min-width:0; padding:var(--plumi-panel-padding); border-radius:20px; box-shadow:var(--plumi-shadow-card); }
+.actions { gap:10px; flex-wrap:wrap; }
+.feedback, .instructions, .submit-asg__meta { min-width:0; overflow-wrap:anywhere; line-height:1.65; }
+@media(max-width:600px) { .actions > ion-button { flex:1 1 auto; min-height:44px; } }
 </style>

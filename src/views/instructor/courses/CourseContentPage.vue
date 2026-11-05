@@ -393,4 +393,14 @@ function formatDate(iso: string | null) {
 .modal-inner h2 { margin: 0; }
 .modal-input { width: 100%; padding: var(--size-2, 0.5rem); border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-md); background: var(--plumi-surface); color: var(--plumi-ink); font: inherit; }
 .modal-actions { display: flex; justify-content: flex-end; gap: var(--size-2, 0.5rem); }
+
+.course-content__panel { min-width:0; padding:var(--plumi-panel-padding); border-radius:20px; box-shadow:var(--plumi-shadow-card); }
+.course-content__panel-head, .module__header { gap:14px; flex-wrap:wrap; }
+.course-content__actions, .modal-actions, .module__actions { gap:10px; flex-wrap:wrap; }
+.assignment__body, .assignment__meta, .course-content__meta, .lesson__body, .lesson__meta, .material__body, .material__meta, .module__desc { min-width:0; overflow-wrap:anywhere; line-height:1.65; }
+@media(max-width:600px) { .course-content__actions > ion-button, .modal-actions > ion-button, .module__actions > ion-button { flex:1 1 auto; min-height:44px; } }
+.course-content__header { padding:28px; background:var(--plumi-primary-subtle); border-radius:24px; }
+.module__header { gap:12px; flex-wrap:wrap; }
+.lesson, .material, .assignment { flex-wrap:wrap; }
+.lesson__body, .material__body, .assignment__body { min-width:120px; }
 </style>

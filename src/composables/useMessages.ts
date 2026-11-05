@@ -1,155 +1,321 @@
-// src/composables/useMessages.ts
-import { nextTick, ref } from 'vue';
+import { nextTick, onBeforeUnmount, ref } from 'vue';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import type { Database } from '@/types/database.types';
 import { supabase } from '@/lib/supabase';
-import { useRealtimeChannel } from '@/composables/useRealtimeChannel';
 import { useAuthStore } from '@/stores/authStore';
 
-export interface ChatMessage {
-  id: string;
-  conversation_id: string;
-  sender_id: string;
-  content: string;
-  created_at: string;
-  edited_at: string | null;
-  deleted_at: string | null;
+function createMessageId(): string {
+  const cryptoApi = globalThis.crypto;
+
+  if (typeof cryptoApi?.randomUUID === 'function') {
+    return cryptoApi.randomUUID();
+  }
+
+  if (typeof cryptoApi?.getRandomValues !== 'function') {
+    throw new Error(
+      'Your browser cannot generate message IDs. Please use an updated browser.',
+    );
+  }
+
+  const bytes = new Uint8Array(16);
+
+  cryptoApi.getRandomValues(bytes);
+
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+
+  const hex = Array.from(
+    bytes,
+    (byte) => byte.toString(16).padStart(2, '0'),
+  ).join('');
+
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20),
+  ].join('-');
+}
+
+type MessageRow = Pick<
+  Database['public']['Tables']['messages']['Row'],
+  | 'id'
+  | 'conversation_id'
+  | 'sender_id'
+  | 'content'
+  | 'created_at'
+  | 'edited_at'
+  | 'deleted_at'
+>;
+
+export interface ChatMessage extends MessageRow {
   sender_name: string;
 }
 
-const SENDER_NAME_TTL_MS = 5 * 60 * 1000;
+type TypingUser = {
+  name: string;
+  at: number;
+};
+
+const MESSAGE_COLUMNS =
+  'id, conversation_id, sender_id, content, created_at, edited_at, deleted_at';
 
 export function useMessages() {
   const auth = useAuthStore();
 
   const messages = ref<ChatMessage[]>([]);
   const messagesEl = ref<HTMLDivElement | null>(null);
-  const typingUsers = ref<Record<string, { name: string; at: number }>>({});
+  const typingUsers = ref<Record<string, TypingUser>>({});
   const onlineUserIds = ref<string[]>([]);
   const loadingMessages = ref(false);
   const messagesError = ref<string | null>(null);
 
-  const senderNameCache = new Map<string, { name: string; at: number }>();
+  const connectionStatus = ref<
+    'idle' | 'connecting' | 'live' | 'error'
+  >('idle');
+
+  const names = new Map<string, string>();
+  const liveRows = new Map<string, MessageRow>();
 
   let currentConversationId: string | null = null;
-  let typingTimer: number | undefined;
-  let typingJanitor: number | undefined;
-  const realtime = useRealtimeChannel('messages-slot');
+  let channel: RealtimeChannel | null = null;
+  let generation = 0;
+  let loadVersion = 0;
+  let typingTimer: ReturnType<typeof setTimeout> | undefined;
+  let typingJanitor: ReturnType<typeof setInterval> | undefined;
 
-  /* -------------------------------------------------------- */
-
-  async function resolveSenderName(userId: string): Promise<string> {
-    if (userId === auth.user?.id) return 'You';
-
-    const cached = senderNameCache.get(userId);
-    if (cached && Date.now() - cached.at < SENDER_NAME_TTL_MS) return cached.name;
-
-    const { data, error } = await supabase.rpc('get_display_names', {
-      p_ids: [userId],
-    });
-    if (error) {
-      console.warn('[messages] get_display_names failed', error);
-      return 'Member';
-    }
-    const row = (data ?? [])[0] as
-      | { first_name: string; last_name: string }
-      | undefined;
-    const name = row
-      ? `${row.first_name} ${row.last_name}`.trim() || 'Member'
-      : 'Member';
-    senderNameCache.set(userId, { name, at: Date.now() });
-    return name;
+  function isCurrent(
+    token: number,
+    conversationId: string,
+  ): boolean {
+    return (
+      generation === token &&
+      currentConversationId === conversationId
+    );
   }
 
-  function mapRow(row: {
-    id: string;
-    conversation_id: string;
-    sender_id: string;
-    content: string;
-    created_at: string;
-    edited_at: string | null;
-    deleted_at: string | null;
-    sender?: { first_name: string; last_name: string } | { first_name: string; last_name: string }[];
-  }, senderName?: string): ChatMessage {
-    const s = Array.isArray(row.sender) ? row.sender[0] : row.sender;
-    const fallback = s ? `${s.first_name} ${s.last_name}`.trim() : null;
+  async function loadNames(userIds: string[]): Promise<void> {
+    const missing = [
+      ...new Set(
+        userIds.filter(
+          (id) => id !== auth.user?.id && !names.has(id),
+        ),
+      ),
+    ];
+
+    if (!missing.length) return;
+
+    const { data, error } = await supabase.rpc(
+      'get_display_names',
+      { p_ids: missing },
+    );
+
+    if (error) return;
+
+    for (const person of data ?? []) {
+      names.set(
+        person.id,
+        `${person.first_name} ${person.last_name}`.trim() ||
+          'Member',
+      );
+    }
+  }
+
+  function mapRow(row: MessageRow): ChatMessage {
     return {
-      id: row.id,
-      conversation_id: row.conversation_id,
-      sender_id: row.sender_id,
-      content: row.content,
-      created_at: row.created_at,
-      edited_at: row.edited_at,
-      deleted_at: row.deleted_at,
+      ...row,
       sender_name:
-        senderName ??
-        (row.sender_id === auth.user?.id ? 'You' : fallback ?? 'Member'),
+        row.sender_id === auth.user?.id
+          ? 'You'
+          : names.get(row.sender_id) ?? 'Member',
     };
   }
 
-  /* -------------------------------------------------------- */
-  /* Public API                                               */
-  /* -------------------------------------------------------- */
+  function sortMessages(): void {
+    messages.value.sort(
+      (a, b) =>
+        a.created_at.localeCompare(b.created_at) ||
+        a.id.localeCompare(b.id),
+    );
+  }
 
-  async function openConversation(conversationId: string) {
-    currentConversationId = conversationId;
-    messages.value = [];
-    messagesError.value = null;
-    typingUsers.value = {};
-    onlineUserIds.value = [];
-    loadingMessages.value = true;
+  function upsertMessage(row: MessageRow): void {
+    messages.value = messages.value.filter(
+      (message) => message.id !== `tmp-${row.id}`,
+    );
+
+    const index = messages.value.findIndex(
+      (message) => message.id === row.id,
+    );
+
+    if (row.deleted_at) {
+      if (index >= 0) {
+        messages.value.splice(index, 1);
+      }
+
+      return;
+    }
+
+    const message = mapRow(row);
+
+    if (index >= 0) {
+      messages.value[index] = message;
+    } else {
+      messages.value.push(message);
+    }
+
+    sortMessages();
+  }
+
+  async function refreshMessages(
+    conversationId: string,
+    token: number,
+    forceScroll = false,
+  ): Promise<void> {
+    const request = ++loadVersion;
+    const shouldScroll = forceScroll || isNearBottom();
 
     try {
       const { data, error } = await supabase
         .from('messages')
-        .select(
-          `id, conversation_id, sender_id, content, created_at, edited_at, deleted_at,
-           sender:profiles!messages_sender_id_fkey ( first_name, last_name )`,
-        )
+        .select(MESSAGE_COLUMNS)
         .eq('conversation_id', conversationId)
         .is('deleted_at', null)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .limit(500);
-      if (error) throw error;
-      messages.value = (data ?? []).map((r) => mapRow(r as never));
-      await nextTick();
-      scrollToBottom(true);
-      void markRead();
-    } catch (e: unknown) {
-      messagesError.value = e instanceof Error ? e.message : 'Failed to load messages.';
-    } finally {
-      loadingMessages.value = false;
-    }
 
-    bindRealtime(conversationId);
+      if (error) throw error;
+
+      if (!isCurrent(token, conversationId)) return;
+
+      const fetched = new Map<string, MessageRow>(
+        (data ?? []).map((row) => [row.id, row]),
+      );
+
+      for (const [id, row] of liveRows) {
+        fetched.set(id, row);
+      }
+
+      await loadNames(
+        [...fetched.values()].map((row) => row.sender_id),
+      );
+
+      if (
+        !isCurrent(token, conversationId) ||
+        request !== loadVersion
+      ) {
+        return;
+      }
+
+      for (const [id, row] of liveRows) {
+        fetched.set(id, row);
+      }
+
+      const pending = messages.value.filter(
+        (message) =>
+          message.id.startsWith('tmp-') &&
+          !fetched.has(message.id.slice(4)),
+      );
+
+      messages.value = [
+        ...[...fetched.values()]
+          .filter((row) => !row.deleted_at)
+          .map(mapRow),
+        ...pending,
+      ];
+
+      sortMessages();
+      messagesError.value = null;
+
+      await nextTick();
+
+      if (!isCurrent(token, conversationId)) return;
+
+      if (shouldScroll) {
+        scrollToBottom(true);
+      }
+
+      if (document.hasFocus() && !document.hidden) {
+        void markRead();
+      }
+    } catch (error: unknown) {
+      if (
+        isCurrent(token, conversationId) &&
+        request === loadVersion
+      ) {
+        messagesError.value = getErrorMessage(error);
+      }
+    } finally {
+      if (
+        isCurrent(token, conversationId) &&
+        request === loadVersion
+      ) {
+        loadingMessages.value = false;
+      }
+    }
   }
 
-  function bindRealtime(conversationId: string) {
-    const handle = realtime.create();
-    const ch = handle.channel;
+  function bindRealtime(
+    conversationId: string,
+    token: number,
+  ): void {
+    const chatChannel = supabase.channel(
+      `conversation:${conversationId}`,
+    );
 
-    ch
-      .on('postgres_changes',
+    channel = chatChannel;
+
+    async function handleRow(row: MessageRow): Promise<void> {
+      if (!isCurrent(token, conversationId)) return;
+
+      const shouldScroll = isNearBottom();
+
+      liveRows.set(row.id, row);
+
+      await loadNames([row.sender_id]);
+
+      if (!isCurrent(token, conversationId)) return;
+
+      const latest = liveRows.get(row.id);
+
+      if (!latest) return;
+
+      upsertMessage(latest);
+
+      await nextTick();
+
+      if (!isCurrent(token, conversationId)) return;
+
+      if (shouldScroll) {
+        scrollToBottom(true);
+      }
+
+      if (
+        row.sender_id !== auth.user?.id &&
+        document.hasFocus() &&
+        !document.hidden
+      ) {
+        void markRead();
+      }
+    }
+
+    chatChannel
+      .on(
+        'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
           filter: `conversation_id=eq.${conversationId}`,
         },
-        async (payload) => {
-          if (currentConversationId !== conversationId) return;
-          const row = payload.new as ChatMessage;
-          if (messages.value.some((m) => m.id === row.id)) return;
-          const name = await resolveSenderName(row.sender_id);
-          messages.value.push({ ...row, sender_name: name });
-          if (isNearBottom()) {
-            await nextTick();
-            scrollToBottom();
-          }
-          if (document.hasFocus() && row.sender_id !== auth.user?.id) {
-            void markRead();
-          }
+        (payload) => {
+          void handleRow(payload.new as MessageRow);
         },
       )
-      .on('postgres_changes',
+      .on(
+        'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
@@ -157,169 +323,265 @@ export function useMessages() {
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          if (currentConversationId !== conversationId) return;
-          const row = payload.new as ChatMessage;
-          const idx = messages.value.findIndex((m) => m.id === row.id);
-          if (idx < 0) return;
-          if (row.deleted_at) {
-            messages.value.splice(idx, 1);
-            return;
-          }
-          messages.value[idx] = {
-            ...messages.value[idx],
-            content: row.content,
-            edited_at: row.edited_at,
-          };
+          void handleRow(payload.new as MessageRow);
         },
       )
       .on('presence', { event: 'sync' }, () => {
-        const state = ch.presenceState<{ user_id: string; name: string }>();
-        onlineUserIds.value = Object.values(state)
-          .flat()
-          .map((p) => (p as { user_id: string }).user_id);
+        if (!isCurrent(token, conversationId)) return;
+
+        const state = chatChannel.presenceState<{
+          user_id: string;
+        }>();
+
+        onlineUserIds.value = [
+          ...new Set(
+            Object.values(state)
+              .flat()
+              .map((person) => person.user_id)
+              .filter(Boolean),
+          ),
+        ];
       })
       .on('broadcast', { event: 'typing' }, ({ payload }) => {
-        const p = payload as { user_id: string; name: string };
-        if (p.user_id === auth.user?.id) return;
-        typingUsers.value[p.user_id] = { name: p.name, at: Date.now() };
+        if (!isCurrent(token, conversationId)) return;
+
+        const person = payload as {
+          user_id?: string;
+          name?: string;
+        };
+
+        if (
+          !person.user_id ||
+          person.user_id === auth.user?.id
+        ) {
+          return;
+        }
+
+        typingUsers.value[person.user_id] = {
+          name: person.name || 'Member',
+          at: Date.now(),
+        };
       });
 
-    void ch.track({
-      user_id: auth.user?.id,
-      name: auth.displayName || 'Member',
+    chatChannel.subscribe((status) => {
+      if (!isCurrent(token, conversationId)) return;
+
+      if (status === 'SUBSCRIBED') {
+        connectionStatus.value = 'live';
+
+        void chatChannel.track({
+          user_id: auth.user?.id,
+          name: auth.displayName || 'Member',
+        });
+
+        void refreshMessages(conversationId, token);
+      } else if (
+        status === 'CHANNEL_ERROR' ||
+        status === 'TIMED_OUT' ||
+        status === 'CLOSED'
+      ) {
+        connectionStatus.value = 'error';
+        onlineUserIds.value = [];
+        typingUsers.value = {};
+      } else {
+        connectionStatus.value = 'connecting';
+      }
     });
 
-    if (typingJanitor) window.clearInterval(typingJanitor);
-    typingJanitor = window.setInterval(() => {
+    typingJanitor = setInterval(() => {
+      if (!isCurrent(token, conversationId)) return;
+
       const cutoff = Date.now() - 4000;
-      for (const [id, t] of Object.entries(typingUsers.value)) {
-        if (t.at < cutoff) delete typingUsers.value[id];
-      }
-    }, 1500);
 
-    handle.onReconnect(() => {
-      if (currentConversationId === conversationId) {
-        void reloadCurrent();
+      for (const [id, person] of Object.entries(typingUsers.value)) {
+        if (person.at < cutoff) {
+          delete typingUsers.value[id];
+        }
       }
-    });
+    }, 1000);
   }
 
-  async function reloadCurrent() {
-    const id = currentConversationId;
-    if (!id) return;
-    const { data, error } = await supabase
-      .from('messages')
-      .select(
-        `id, conversation_id, sender_id, content, created_at, edited_at, deleted_at,
-         sender:profiles!messages_sender_id_fkey ( first_name, last_name )`,
-      )
-      .eq('conversation_id', id)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: true })
-      .limit(500);
-    if (error) return;
-    messages.value = (data ?? []).map((r) => mapRow(r as never));
-    await nextTick();
-    scrollToBottom(true);
+  async function openConversation(
+    conversationId: string,
+  ): Promise<void> {
+    close();
+
+    currentConversationId = conversationId;
+    loadingMessages.value = true;
+    messagesError.value = null;
+    connectionStatus.value = 'connecting';
+
+    const token = generation;
+
+    bindRealtime(conversationId, token);
+
+    await refreshMessages(conversationId, token, true);
   }
 
-  function close() {
-    realtime.dispose();
+  function close(): void {
+    generation++;
+    loadVersion++;
+
+    const previousChannel = channel;
+
+    channel = null;
     currentConversationId = null;
+
+    if (previousChannel) {
+      void supabase.removeChannel(previousChannel);
+    }
+
+    clearTimeout(typingTimer);
+    clearInterval(typingJanitor);
+
+    typingTimer = undefined;
+    typingJanitor = undefined;
+
     messages.value = [];
     typingUsers.value = {};
     onlineUserIds.value = [];
-    if (typingTimer) { window.clearTimeout(typingTimer); typingTimer = undefined; }
-    if (typingJanitor) { window.clearInterval(typingJanitor); typingJanitor = undefined; }
+    loadingMessages.value = false;
+    messagesError.value = null;
+    connectionStatus.value = 'idle';
+
+    liveRows.clear();
+    names.clear();
   }
 
-  /* -------------------------------------------------------- */
-  /* Send + typing + read                                     */
-  /* -------------------------------------------------------- */
-
   async function send(content: string): Promise<void> {
-    if (!currentConversationId || !auth.user?.id) return;
+    const conversationId = currentConversationId;
+    const senderId = auth.user?.id;
+    const token = generation;
     const text = content.trim();
+
+    if (!conversationId || !senderId) {
+      throw new Error(
+        'Select a conversation before sending.',
+      );
+    }
+
     if (!text) return;
 
-    // Optimistic — a temporary row that gets replaced by the realtime INSERT
-    const tempId = `tmp-${crypto.randomUUID()}`;
-    const now = new Date().toISOString();
-    const optimistic: ChatMessage = {
+    const serverId = createMessageId();
+    const tempId = `tmp-${serverId}`;
+
+    messages.value.push({
       id: tempId,
-      conversation_id: currentConversationId,
-      sender_id: auth.user.id,
+      conversation_id: conversationId,
+      sender_id: senderId,
       content: text,
-      created_at: now,
+      created_at: new Date().toISOString(),
       edited_at: null,
       deleted_at: null,
       sender_name: 'You',
-    };
-    messages.value.push(optimistic);
+    });
+
     await nextTick();
-    scrollToBottom(true);
 
-    const { data, error } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: currentConversationId,
-        sender_id: auth.user.id,
-        content: text,
-      })
-      .select(
-        `id, conversation_id, sender_id, content, created_at, edited_at, deleted_at,
-         sender:profiles!messages_sender_id_fkey ( first_name, last_name )`,
-      )
-      .single();
-
-    if (error) {
-      const idx = messages.value.findIndex((m) => m.id === tempId);
-      if (idx >= 0) messages.value.splice(idx, 1);
-      throw error;
+    if (isCurrent(token, conversationId)) {
+      scrollToBottom(true);
     }
 
-    // Replace the temp row with the server row (avoids realtime insert duplication)
-    const idx = messages.value.findIndex((m) => m.id === tempId);
-    if (idx >= 0) messages.value[idx] = mapRow(data as never, 'You');
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          id: serverId,
+          conversation_id: conversationId,
+          sender_id: senderId,
+          content: text,
+        })
+        .select(MESSAGE_COLUMNS)
+        .single();
+
+      if (error) throw error;
+
+      if (!isCurrent(token, conversationId)) return;
+
+      const latest = liveRows.get(data.id) ?? data;
+
+      liveRows.set(data.id, latest);
+      upsertMessage(latest);
+
+      await nextTick();
+
+      if (isCurrent(token, conversationId)) {
+        scrollToBottom(true);
+      }
+    } catch (error: unknown) {
+      if (isCurrent(token, conversationId)) {
+        messages.value = messages.value.filter(
+          (message) => message.id !== tempId,
+        );
+      }
+
+      throw error;
+    }
   }
 
-  function signalTyping() {
-    if (!realtime.channel.value || !auth.user?.id) return;
-    if (typingTimer) return;
-    void realtime.channel.value.send({
+  function signalTyping(): void {
+    if (
+      !channel ||
+      !auth.user?.id ||
+      connectionStatus.value !== 'live' ||
+      typingTimer
+    ) {
+      return;
+    }
+
+    void channel.send({
       type: 'broadcast',
       event: 'typing',
-      payload: { user_id: auth.user.id, name: auth.displayName || 'Member' },
+      payload: {
+        user_id: auth.user.id,
+        name: auth.displayName || 'Member',
+      },
     });
-    typingTimer = window.setTimeout(() => { typingTimer = undefined; }, 2000);
+
+    typingTimer = setTimeout(() => {
+      typingTimer = undefined;
+    }, 2000);
   }
 
   async function markRead(): Promise<void> {
-    if (!currentConversationId || !auth.user?.id) return;
+    const conversationId = currentConversationId;
+    const userId = auth.user?.id;
+
+    if (!conversationId || !userId) return;
+
     await supabase
       .from('conversation_members')
-      .update({ last_read_at: new Date().toISOString() })
-      .eq('conversation_id', currentConversationId)
-      .eq('user_id', auth.user.id);
+      .update({
+        last_read_at: new Date().toISOString(),
+      })
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId);
   }
 
-  /* -------------------------------------------------------- */
-  /* Scroll helpers                                           */
-  /* -------------------------------------------------------- */
-
   function isNearBottom(): boolean {
-    const el = messagesEl.value;
-    if (!el) return true;
-    return el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    const element = messagesEl.value;
+
+    if (!element) return true;
+
+    return (
+      element.scrollHeight -
+        element.scrollTop -
+        element.clientHeight <
+      120
+    );
   }
 
   function scrollToBottom(force = false): void {
-    const el = messagesEl.value;
-    if (!el) return;
+    const element = messagesEl.value;
+
+    if (!element) return;
+
     if (force || isNearBottom()) {
-      el.scrollTop = el.scrollHeight;
+      element.scrollTop = element.scrollHeight;
     }
   }
+
+  onBeforeUnmount(close);
 
   return {
     messages,
@@ -328,6 +590,7 @@ export function useMessages() {
     onlineUserIds,
     loadingMessages,
     messagesError,
+    connectionStatus,
     openConversation,
     close,
     send,
@@ -336,4 +599,16 @@ export function useMessages() {
     scrollToBottom,
     isNearBottom,
   };
+}
+
+function getErrorMessage(error: unknown): string {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error
+  ) {
+    return String(error.message);
+  }
+
+  return 'Unable to load messages. Please try again.';
 }

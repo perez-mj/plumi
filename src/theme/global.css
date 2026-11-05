@@ -1,14 +1,48 @@
-/* src/theme/global.css — imported after design-tokens.css */
 .page-shell {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-4, 1rem);
-  width: 100%;
-  max-width: var(--plumi-content-max-width, 1100px);
-  padding: var(--plumi-page-padding, var(--size-4, 1rem));
-  margin-inline: auto;
+  display:flex; flex-direction:column; gap:24px; width:100%; min-width:0;
+  max-width:var(--plumi-content-max-width); padding:var(--plumi-page-padding);
+  padding-bottom:max(32px,env(safe-area-inset-bottom)); margin-inline:auto;
 }
-
-@media (max-width: 767px) {
-  .page-shell { padding: var(--size-3, 0.75rem); }
+.page-shell > * { min-width:0; }
+.page-shell > ion-button[fill="clear"] { align-self:flex-start; margin:0; }
+ion-content { --background:var(--plumi-bg); }
+ion-button { --border-radius:12px; --box-shadow:none; min-height:44px; font-size:.875rem; font-weight:650; text-transform:none; letter-spacing:0; }
+ion-button.button-small { min-height:38px; font-size:.78rem; }
+ion-button[fill="clear"] { --background-hover:var(--plumi-primary-soft); }
+ion-searchbar { --background:var(--plumi-surface); --color:var(--plumi-ink); --placeholder-color:var(--plumi-text-muted); --icon-color:var(--plumi-text-muted); --border-radius:14px; --box-shadow:var(--plumi-shadow-card); padding:0; min-height:52px; }
+ion-searchbar::part(native) { border:1px solid var(--plumi-border); }
+ion-input, ion-textarea, ion-select {
+ --background:var(--plumi-surface-muted); --color:var(--plumi-ink);
+ --highlight-color-focused:var(--plumi-primary); --padding-start:14px; --padding-end:14px;
+ min-width:0; border-radius:12px;
+}
+ion-input, ion-select { min-height:54px; }
+ion-input::part(label), ion-textarea::part(label), ion-select::part(label) { font-weight:600; }
+ion-segment { width:100%; padding:5px; border:1px solid var(--plumi-border); border-radius:14px; background:var(--plumi-surface); }
+ion-segment-button { --border-radius:10px; --indicator-box-shadow:none; --indicator-color:var(--plumi-primary-soft); --color:var(--plumi-text-muted); --color-checked:var(--plumi-primary); min-width:0; min-height:44px; font-size:.78rem; text-transform:none; letter-spacing:0; }
+ion-modal { --border-radius:24px; --max-width:min(640px,calc(100vw - 32px)); --max-height:90dvh; --background:var(--plumi-surface); }
+ion-modal ion-content { --background:var(--plumi-surface); }
+ion-modal::part(content) { border:1px solid var(--plumi-border); box-shadow:var(--plumi-shadow-popover); }
+.page-shell label { line-height:1.6; }
+.page-shell input:not([type="checkbox"]):not([type="radio"]),
+.page-shell textarea, .page-shell select, .modal-inner .modal-input {
+ width:100%; min-width:0; min-height:46px; padding:12px 14px;
+ border:1px solid var(--plumi-border-strong); border-radius:12px;
+ background:var(--plumi-surface); color:var(--plumi-ink); font-size:.875rem;
+ transition:border-color 160ms,box-shadow 160ms;
+}
+.page-shell input[type="checkbox"], .page-shell input[type="radio"] { accent-color:var(--plumi-primary); width:18px; height:18px; flex-shrink:0; }
+.page-shell input:focus-visible, .page-shell textarea:focus-visible, .page-shell select:focus-visible, .modal-input:focus-visible { outline:none; border-color:var(--plumi-primary); box-shadow:var(--plumi-focus-ring); }
+.page-shell input[type="file"] { border:1px dashed var(--plumi-border-strong); padding:16px; background:var(--plumi-primary-subtle); }
+input[type="file"]::file-selector-button { margin-right:12px; padding:9px 12px; border:0; border-radius:8px; background:var(--plumi-primary-soft); color:var(--plumi-primary); font:inherit; cursor:pointer; }
+@media(max-width:960px) { .page-shell { padding:24px; } }
+@media(max-width:600px) {
+ .page-shell { gap:20px; padding:20px 16px max(24px,env(safe-area-inset-bottom)); }
+ ion-button.button-small { min-height:44px; }
+ .page-shell input:not([type="checkbox"]):not([type="radio"]), .page-shell textarea, .page-shell select, .modal-inner .modal-input { font-size:16px; }
+ ion-input, ion-textarea, ion-select { font-size:16px; }
+ ion-segment { overflow-x:auto; }
+ ion-segment-button { flex:1 0 auto; min-width:90px; }
+ ion-modal { --width:100%; --max-width:100%; --height:100%; --max-height:100%; --border-radius:0; }
+ ion-modal::part(content) { border:0; }
 }

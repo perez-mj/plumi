@@ -74,4 +74,8 @@ onBeforeUnmount(() => { void recordLeave(meetingId); });
 .meeting-room__frame { flex: 1 1 auto; min-height: 0; background: black; display: flex; }
 .meeting-room__status { margin: auto; color: white; font-size: var(--plumi-text-sm); text-align: center; padding: var(--size-4, 1rem); }
 .meeting-room__status--error { color: #ffb4b4; }
+
+.meeting-room__header { min-height:64px; gap:12px; padding:10px 18px; }
+.meeting-room__room { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media(max-width:600px) { .meeting-room__header { padding:8px 10px; } }
 </style>

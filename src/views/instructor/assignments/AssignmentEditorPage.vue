@@ -114,4 +114,9 @@ onMounted(load);
 .asg-editor__check { flex-direction: row !important; align-items: center; gap: var(--size-2, 0.5rem) !important; }
 .asg-editor__actions { display: flex; justify-content: flex-end; gap: var(--size-2, 0.5rem); margin-top: var(--size-2, 0.5rem); }
 .asg-editor__error { color: var(--plumi-danger); font-size: var(--plumi-text-sm); margin: 0; }
+
+.asg-editor__form { min-width:0; padding:var(--plumi-panel-padding); border-radius:20px; box-shadow:var(--plumi-shadow-card); }
+.asg-editor__actions { gap:10px; flex-wrap:wrap; }
+@media(max-width:640px) { .asg-editor__row { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:600px) { .asg-editor__actions > ion-button { flex:1 1 auto; min-height:44px; } }
 </style>

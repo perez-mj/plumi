@@ -154,4 +154,8 @@ onMounted(load);
 .sub-card__form { display: flex; gap: var(--size-2, 0.5rem); flex-wrap: wrap; align-items: center; }
 .sub-card__form input { padding: var(--size-1, 0.25rem) var(--size-2, 0.5rem); border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-sm); background: var(--plumi-surface); color: var(--plumi-ink); font: inherit; }
 .sub-card__error { margin: var(--size-2) 0 0; font-size: var(--plumi-text-xs); color: var(--plumi-danger); }
+
+.sub-card { min-width:0; padding:var(--plumi-panel-padding); border-radius:20px; box-shadow:var(--plumi-shadow-card); }
+.sub-card__head { gap:14px; flex-wrap:wrap; }
+.sub-card__content, .sub-card__email { min-width:0; overflow-wrap:anywhere; line-height:1.65; }
 </style>

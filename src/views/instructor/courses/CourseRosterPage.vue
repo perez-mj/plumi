@@ -99,4 +99,7 @@ onMounted(load);
 .roster-item__email { margin: 0; font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
 .roster-item__status { padding: 2px 8px; border-radius: var(--radius-round); background: var(--plumi-success-soft); color: var(--plumi-success); font-size: var(--plumi-text-xs); }
 .roster-error { margin: var(--size-2) 0 0; color: var(--plumi-danger); font-size: var(--plumi-text-sm); }
+
+.roster-item { min-width:0; padding:var(--plumi-panel-padding); border-radius:20px; box-shadow:var(--plumi-shadow-card); }
+.roster-item__body, .roster-item__email { min-width:0; overflow-wrap:anywhere; line-height:1.65; }
 </style>

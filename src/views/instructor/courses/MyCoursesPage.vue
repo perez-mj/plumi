@@ -92,5 +92,7 @@ onMounted(load);
 .my-courses__tabs { display: flex; gap: var(--size-1, 0.25rem); flex-wrap: wrap; }
 .my-courses__tab { padding: var(--size-1, 0.25rem) var(--size-3, 0.75rem); border-radius: var(--radius-round); border: 1px solid var(--plumi-border); background: var(--plumi-surface); color: var(--plumi-text-muted); font-size: var(--plumi-text-sm); cursor: pointer; }
 .my-courses__tab--active { background: var(--plumi-primary); border-color: var(--plumi-primary); color: white; }
-.my-courses__grid { display: grid; gap: var(--size-4, 1rem); grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.my-courses__grid { display: grid; gap: var(--size-4, 1rem); grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+
+.my-courses__tab { min-height:42px; padding:9px 18px; font-weight:600; border-radius:12px; }
 </style>

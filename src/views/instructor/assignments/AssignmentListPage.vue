@@ -115,4 +115,7 @@ onMounted(load);
 .asg-row__body { flex: 1; min-width: 0; cursor: pointer; }
 .asg-row__title { margin: 0; font-size: var(--plumi-text-sm); font-weight: var(--plumi-weight-semibold); }
 .asg-row__meta { margin: 0; font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
+
+.asg-row { min-width:0; padding:var(--plumi-panel-padding); border-radius:20px; box-shadow:var(--plumi-shadow-card); }
+.asg-row__body, .asg-row__meta { min-width:0; overflow-wrap:anywhere; line-height:1.65; }
 </style>

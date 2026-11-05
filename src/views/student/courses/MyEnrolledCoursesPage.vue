@@ -72,5 +72,5 @@ onMounted(load);
 </script>
 
 <style scoped>
-.my-enr__grid { display: grid; gap: var(--size-4, 1rem); grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.my-enr__grid { display: grid; gap: var(--size-4, 1rem); grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
 </style>

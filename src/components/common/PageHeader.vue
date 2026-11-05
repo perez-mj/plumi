@@ -16,30 +16,18 @@ defineProps<{ title: string; subtitle?: string }>();
 </script>
 
 <style scoped>
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--size-4);
-  margin-bottom: var(--size-6);
+
+.page-header { display:flex; align-items:center; justify-content:space-between; gap:24px; margin:0 0 4px; padding:4px 0 16px; }
+.page-header__text { min-width:0; }
+.page-header__title { margin:0; font-size:var(--plumi-text-2xl); font-weight:750; letter-spacing:-.045em; line-height:1.2; color:var(--plumi-ink); overflow-wrap:anywhere; }
+.page-header__subtitle { margin:10px 0 0; max-width:62ch; font-size:.875rem; line-height:1.65; color:var(--plumi-text-muted); }
+.page-header__actions { display:flex; flex-shrink:0; align-items:center; gap:8px; flex-wrap:wrap; }
+.page-header__actions:empty { display:none; }
+@media(max-width:600px) {
+ .page-header { align-items:flex-start; flex-direction:column; gap:16px; padding-bottom:8px; }
+ .page-header__actions { width:100%; }
+ .page-header__actions :deep(ion-button) { margin:0; min-height:44px; }
+ .page-header__subtitle { margin-top:7px; font-size:.8125rem; }
 }
-.page-header__title {
-  margin: 0;
-  font-family: var(--plumi-font-heading);
-  font-size: var(--plumi-text-2xl);
-  font-weight: var(--plumi-weight-bold);
-  color: var(--plumi-ink);
-  letter-spacing: -0.03em;
-}
-.page-header__subtitle {
-  margin: var(--size-1) 0 0;
-  color: var(--plumi-text-muted);
-  font-size: var(--plumi-text-sm);
-}
-.page-header__actions {
-  display: flex;
-  align-items: center;
-  gap: var(--size-2);
-  flex-wrap: wrap;
-}
+
 </style>

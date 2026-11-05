@@ -12,4 +12,8 @@ withDefaults(defineProps<{ label?: string }>(), { label: 'Loading…' });
 <style scoped>
 .loading { display: flex; align-items: center; justify-content: center; gap: var(--size-2);
   padding: var(--size-7); color: var(--plumi-text-muted); font-size: var(--plumi-text-sm); }
+
+.loading { min-height:160px; padding:32px 16px; }
+.loading :deep(ion-spinner) { color:var(--plumi-primary); }
+
 </style>

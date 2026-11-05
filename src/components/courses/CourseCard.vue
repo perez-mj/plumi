@@ -1,6 +1,6 @@
 <!-- src/components/courses/CourseCard.vue -->
 <template>
-  <article class="course-card" @click="$emit('open', course.id)">
+  <article role="button" tabindex="0" @keydown.enter="$emit('open', course.id)" @keydown.space.prevent="$emit('open', course.id)" class="course-card" @click="$emit('open', course.id)">
     <div class="course-card__cover">
       <img v-if="course.cover_image_url" :src="course.cover_image_url" :alt="course.title" />
       <div v-else class="course-card__cover-fallback">
@@ -102,4 +102,18 @@ const statusLabel = computed(() => {
   border-top: 1px solid var(--plumi-border);
   font-size: var(--plumi-text-xs); color: var(--plumi-text-muted);
 }
+
+.course-card { height:100%; box-shadow:var(--plumi-shadow-card); border-radius:22px; }
+.course-card__cover { aspect-ratio: 1.95; }
+.course-card__cover-fallback { background:radial-gradient(ellipse at top right, rgb(255 255 255 / 15%), transparent 65%),var(--plumi-brand); color:white; font-size:48px; letter-spacing:-.06em; }
+.course-card__status { top:14px; right:14px; padding:5px 10px; letter-spacing:.04em; font-size:10px; }
+.course-card__body { padding:22px; }
+.course-card__title { font-size:1.05rem; line-height:1.45; font-weight:700; letter-spacing:-.025em; }
+.course-card__code { font-size:.7rem; margin-bottom:8px; }
+.course-card__category { margin:10px 0; }
+.course-card__desc { line-height:1.7; }
+.course-card__footer { padding:14px 22px; background:var(--plumi-primary-subtle); }
+.course-card:focus-visible { outline:3px solid var(--plumi-primary); outline-offset:3px; }
+@media(hover:none) { .course-card:hover { transform:none; } }
+
 </style>

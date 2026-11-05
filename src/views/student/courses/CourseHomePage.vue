@@ -229,4 +229,13 @@ function formatSize(bytes: number | null): string {
 .modal-input { width: 100%; padding: var(--size-2, 0.5rem); border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-md); background: var(--plumi-surface); color: var(--plumi-ink); font: inherit; }
 .modal-actions { display: flex; justify-content: flex-end; gap: var(--size-2, 0.5rem); }
 .modal-error { color: var(--plumi-danger); font-size: var(--plumi-text-sm); margin: 0; }
+
+.panel { min-width:0; padding:var(--plumi-panel-padding); border-radius:20px; box-shadow:var(--plumi-shadow-card); }
+.module__header { gap:14px; flex-wrap:wrap; }
+.modal-actions { gap:10px; flex-wrap:wrap; }
+.announcement__content, .announcement__meta, .assignment__meta, .course-home__desc, .lesson__meta, .material__body, .material__meta { min-width:0; overflow-wrap:anywhere; line-height:1.65; }
+@media(max-width:600px) { .modal-actions > ion-button { flex:1 1 auto; min-height:44px; } }
+.course-home__hero { padding:var(--plumi-panel-padding); border:1px solid var(--plumi-border); border-radius:24px; background:var(--plumi-surface); box-shadow:var(--plumi-shadow-card); }
+.course-home__progress { flex-wrap:wrap; }
+.course-home__progress .progress { min-width:100px; }
 </style>

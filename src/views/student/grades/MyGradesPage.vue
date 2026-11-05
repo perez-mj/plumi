@@ -90,4 +90,8 @@ onMounted(load);
 .grade-row__score { font-weight: var(--plumi-weight-bold); color: var(--plumi-success); }
 .grade-row__meta { margin: 0; font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
 .grade-row__feedback { padding: var(--size-2, 0.5rem); background: var(--plumi-success-soft); border-radius: var(--plumi-radius-sm); margin: var(--size-2, 0.5rem) 0 0; font-size: var(--plumi-text-sm); }
+
+.grade-row { min-width:0; padding:var(--plumi-panel-padding); border-radius:20px; box-shadow:var(--plumi-shadow-card); }
+.grade-row__head { gap:14px; flex-wrap:wrap; }
+.grade-row__meta { min-width:0; overflow-wrap:anywhere; line-height:1.65; }
 </style>

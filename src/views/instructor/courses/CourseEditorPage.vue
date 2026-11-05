@@ -138,4 +138,9 @@ onMounted(load);
 .course-editor__row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--size-3, 0.75rem); }
 .course-editor__actions { display: flex; justify-content: flex-end; gap: var(--size-2, 0.5rem); margin-top: var(--size-2, 0.5rem); }
 .course-editor__error { color: var(--plumi-danger); font-size: var(--plumi-text-sm); margin: 0; }
+
+.course-editor__form { min-width:0; padding:var(--plumi-panel-padding); border-radius:20px; box-shadow:var(--plumi-shadow-card); }
+.course-editor__actions { gap:10px; flex-wrap:wrap; }
+@media(max-width:640px) { .course-editor__row { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:600px) { .course-editor__actions > ion-button { flex:1 1 auto; min-height:44px; } }
 </style>

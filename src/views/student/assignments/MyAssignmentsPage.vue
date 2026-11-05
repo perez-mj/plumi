@@ -126,4 +126,9 @@ onMounted(load);
 .asg-row__title { margin: 0; font-size: var(--plumi-text-sm); font-weight: var(--plumi-weight-semibold); }
 .asg-row__status { padding: 2px 8px; border-radius: var(--radius-round); background: var(--plumi-info-soft); color: var(--plumi-info); font-size: var(--plumi-text-xs); }
 .asg-row__meta { margin: 0; font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
+
+.asg-row { min-width:0; padding:var(--plumi-panel-padding); border-radius:20px; box-shadow:var(--plumi-shadow-card); }
+.asg-row__head { gap:14px; flex-wrap:wrap; }
+.asg-row__meta { min-width:0; overflow-wrap:anywhere; line-height:1.65; }
+.my-asg__tab { min-height:42px; padding:9px 18px; font-weight:600; border-radius:12px; }
 </style>

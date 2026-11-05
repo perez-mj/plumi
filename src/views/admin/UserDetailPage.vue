@@ -156,4 +156,11 @@ onMounted(load);
 .user-detail__form input:disabled, .user-detail__form select:disabled { opacity: 0.65; }
 .user-detail__actions { display: flex; justify-content: flex-end; gap: var(--size-2, 0.5rem); margin-top: var(--size-3, 0.75rem); }
 .user-detail__error { color: var(--plumi-danger); font-size: var(--plumi-text-sm); margin: var(--size-2, 0.5rem) 0 0; }
+
+.user-detail__panel { min-width:0; padding:var(--plumi-panel-padding); border-radius:20px; box-shadow:var(--plumi-shadow-card); }
+.user-detail__header { gap:14px; flex-wrap:wrap; }
+.user-detail__actions { gap:10px; flex-wrap:wrap; }
+.user-detail__email { min-width:0; overflow-wrap:anywhere; line-height:1.65; }
+@media(max-width:640px) { .user-detail__form { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:600px) { .user-detail__actions > ion-button { flex:1 1 auto; min-height:44px; } }
 </style>

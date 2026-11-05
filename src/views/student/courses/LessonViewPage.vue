@@ -96,4 +96,8 @@ onMounted(load);
 .lesson-view__content { line-height: 1.7; color: var(--plumi-ink); }
 .lesson-view__empty { color: var(--plumi-text-muted); }
 .lesson-view__complete { display: flex; justify-content: center; padding: var(--size-4, 1rem) 0; }
+
+.lesson-view__content { min-width:0; overflow-wrap:anywhere; line-height:1.65; }
+.lesson-view__content { padding:var(--plumi-panel-padding); border:1px solid var(--plumi-border); border-radius:20px; background:var(--plumi-surface); }
+.lesson-view__content :deep(img) { max-width:100%; height:auto; }
 </style>

@@ -138,7 +138,7 @@ onMounted(load);
 </script>
 
 <style scoped>
-.meetings__grid { display: grid; gap: var(--size-3, 0.75rem); grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.meetings__grid { display: grid; gap: var(--size-3, 0.75rem); grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
 .meeting { padding: var(--size-4, 1rem); border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-lg); background: var(--plumi-surface); display: flex; flex-direction: column; gap: var(--size-2, 0.5rem); }
 .meeting__header { display: flex; align-items: center; justify-content: space-between; }
 .meeting__icon { font-size: 22px; color: var(--plumi-primary); }
@@ -149,4 +149,8 @@ onMounted(load);
 .meeting__title { margin: 0; font-size: var(--plumi-text-md); }
 .meeting__desc { margin: 0; font-size: var(--plumi-text-sm); color: var(--plumi-text-muted); }
 .meeting__time { margin: 0; font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
+
+.meeting { min-width:0; padding:var(--plumi-panel-padding); border-radius:20px; box-shadow:var(--plumi-shadow-card); }
+.meeting__header { gap:14px; flex-wrap:wrap; }
+.meeting__desc { min-width:0; overflow-wrap:anywhere; line-height:1.65; }
 </style>

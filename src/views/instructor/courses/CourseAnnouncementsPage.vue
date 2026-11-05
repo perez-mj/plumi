@@ -121,4 +121,10 @@ onMounted(load);
 .modal-inner h2 { margin: 0; }
 .modal-input { width: 100%; padding: var(--size-2, 0.5rem); border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-md); background: var(--plumi-surface); color: var(--plumi-ink); font: inherit; }
 .modal-actions { display: flex; justify-content: flex-end; gap: var(--size-2, 0.5rem); }
+
+.ann-row { min-width:0; padding:var(--plumi-panel-padding); border-radius:20px; box-shadow:var(--plumi-shadow-card); }
+.ann-row__foot { gap:14px; flex-wrap:wrap; }
+.modal-actions { gap:10px; flex-wrap:wrap; }
+.ann-row__content, .ann-row__meta { min-width:0; overflow-wrap:anywhere; line-height:1.65; }
+@media(max-width:600px) { .modal-actions > ion-button { flex:1 1 auto; min-height:44px; } }
 </style>

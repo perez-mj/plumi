@@ -7,7 +7,7 @@
       </ion-refresher>
 
       <div class="page-shell">
-        <PageHeader :title="`Hello, ${auth.displayName || 'Instructor'}`" subtitle="Manage your courses and students" />
+        <div class="dashboard-welcome"><span class="dashboard-welcome__eyebrow">YOUR TEACHING WORKSPACE</span><PageHeader :title="`Hello, ${auth.displayName || 'Instructor'}`" subtitle="Manage your courses and students" /></div>
 
         <LoadingState v-if="loading" />
         <ErrorState v-else-if="error" :message="error" @retry="load" />
@@ -157,8 +157,8 @@ onMounted(load);
 </script>
 
 <style scoped>
-.instr-dash__stats { display: grid; gap: var(--size-3, 0.75rem); grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
-.instr-dash__grid { display: grid; gap: var(--size-4, 1rem); grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.instr-dash__stats { display: grid; gap: var(--size-3, 0.75rem); grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
+.instr-dash__grid { display: grid; gap: var(--size-4, 1rem); grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
 .instr-dash__panel { padding: var(--size-4, 1rem); border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-lg); background: var(--plumi-surface); }
 .instr-dash__panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--size-3, 0.75rem); }
 .instr-dash__panel-head h2 { margin: 0; font-size: var(--plumi-text-md); }
@@ -171,4 +171,16 @@ onMounted(load);
 .instr-dash__item-title { margin: 0; font-size: var(--plumi-text-sm); font-weight: var(--plumi-weight-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .instr-dash__item-meta { margin: 0; font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
 .instr-dash__empty { color: var(--plumi-text-muted); font-size: var(--plumi-text-sm); text-align: center; padding: var(--size-3, 0.75rem); }
+
+.instr-dash__panel { min-width:0; padding:var(--plumi-panel-padding); border-radius:20px; box-shadow:var(--plumi-shadow-card); }
+.instr-dash__panel-head { gap:14px; flex-wrap:wrap; }
+.instr-dash__item { padding:14px 12px; min-height:70px; border-bottom:1px solid var(--plumi-border); border-radius:10px; }
+.instr-dash__stats { gap:16px; }
+@media(max-width:600px) { .instr-dash__stats { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; } }
+
+.dashboard-welcome { position:relative; padding:28px 30px 22px; overflow:hidden; border:1px solid var(--plumi-border); border-radius:24px; background:var(--plumi-primary-subtle); }
+.dashboard-welcome::after { content:''; position:absolute; width:180px; height:180px; right:-60px; top:-70px; border:30px solid var(--plumi-primary-soft); border-radius:50%; pointer-events:none; }
+.dashboard-welcome__eyebrow { display:block; position:relative; z-index:1; margin-bottom:12px; color:var(--plumi-primary); font-size:10px; font-weight:700; letter-spacing:.15em; }
+.dashboard-welcome :deep(.page-header) { position:relative; z-index:1; padding:0; margin:0; }
+@media(max-width:600px) { .dashboard-welcome { padding:22px 20px; } }
 </style>

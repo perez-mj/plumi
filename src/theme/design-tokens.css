@@ -1,21 +1,16 @@
-/* src/theme/design-tokens.css */
-/* =========================================================
-   PLUMI — SEMANTIC DESIGN SYSTEM
-   Built on Open Props
-   ========================================================= */
-
-/* ---------- Brand ---------- */
 :root {
-  --plumi-primary: #5b5bd6;
-  --plumi-primary-hover: #4848b8;
-  --plumi-primary-active: #3d3d9e;
-  --plumi-primary-soft: #eeeeff;
-  --plumi-primary-subtle: #f6f6ff;
+  --plumi-brand: #58065f;
+  --plumi-brand-contrast: #ffffff;
 
-  --plumi-accent: #8b5cf6;
-  --plumi-accent-soft: #f2ebff;
+  --plumi-primary: #58065f;
+  --plumi-primary-hover: #47044d;
+  --plumi-primary-active: #37033c;
+  --plumi-primary-soft: #f3e8f4;
+  --plumi-primary-subtle: #fbf6fc;
 
-  /* ---------- Typography ---------- */
+  --plumi-accent: #963b8e;
+  --plumi-accent-soft: #f8eaf5;
+
   --plumi-font-body:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
@@ -40,7 +35,6 @@
   --plumi-line-normal: var(--font-lineheight-3);
   --plumi-line-relaxed: var(--font-lineheight-4);
 
-  /* ---------- Layout ---------- */
   --plumi-sidebar-width: 264px;
   --plumi-sidebar-collapsed-width: 80px;
   --plumi-mobile-drawer-width: min(300px, 86vw);
@@ -51,7 +45,6 @@
   --plumi-section-gap: var(--size-5);
   --plumi-stack-gap: var(--size-3);
 
-  /* ---------- Spacing aliases ---------- */
   --plumi-space-1: var(--size-1);
   --plumi-space-2: var(--size-2);
   --plumi-space-3: var(--size-3);
@@ -61,132 +54,190 @@
   --plumi-space-7: var(--size-7);
   --plumi-space-8: var(--size-8);
 
-  /* ---------- Shapes ---------- */
   --plumi-radius-sm: var(--radius-1);
   --plumi-radius-md: var(--radius-2);
   --plumi-radius-lg: var(--radius-3);
   --plumi-radius-xl: var(--radius-4);
   --plumi-radius-pill: var(--radius-round);
 
-  /* ---------- Borders ---------- */
   --plumi-border-width: var(--border-size-1);
   --plumi-border-style: solid;
 
-  /* ---------- Elevation ---------- */
-  --plumi-shadow-card: var(--shadow-1);
-  --plumi-shadow-raised: var(--shadow-2);
-  --plumi-shadow-popover: var(--shadow-3);
-  --plumi-shadow-drawer: var(--shadow-4);
+  --plumi-shadow-card:
+    0 2px 8px rgb(52 17 55 / 3%),
+    0 8px 24px rgb(52 17 55 / 3%);
 
-  /* ---------- Motion ---------- */
+  --plumi-shadow-raised:
+    0 4px 12px rgb(52 17 55 / 5%),
+    0 16px 36px rgb(52 17 55 / 7%);
+
+  --plumi-shadow-popover:
+    0 8px 24px rgb(52 17 55 / 8%),
+    0 24px 56px rgb(52 17 55 / 10%);
+
+  --plumi-shadow-drawer:
+    12px 0 48px rgb(36 12 40 / 18%);
+
   --plumi-duration-fast: 120ms;
   --plumi-duration-normal: 200ms;
   --plumi-duration-slow: 280ms;
   --plumi-easing: cubic-bezier(0.2, 0, 0, 1);
 
-  /* ---------- Layers ---------- */
   --plumi-layer-content: 0;
   --plumi-layer-sticky: 10;
   --plumi-layer-drawer: 100;
   --plumi-layer-backdrop: 90;
   --plumi-layer-toast: 200;
 
-  /* ---------- Controls ---------- */
   --plumi-control-height: 44px;
   --plumi-control-height-sm: 36px;
   --plumi-control-height-lg: 52px;
 
-  /* ---------- Light surfaces ---------- */
-  --plumi-bg: #f7f8fc;
+  --plumi-bg: #faf7fb;
   --plumi-surface: #ffffff;
   --plumi-surface-raised: #ffffff;
-  --plumi-surface-muted: #f0f2f9;
+  --plumi-surface-muted: #f4eef5;
 
-  /* ---------- Light text ---------- */
-  --plumi-ink: #23273b;
-  --plumi-text-muted: #737991;
-  --plumi-text-subtle: #969bb0;
+  --plumi-ink: #2c2030;
+  --plumi-text-muted: #756779;
+  --plumi-text-subtle: #847387;
 
-  /* ---------- Light borders ---------- */
-  --plumi-border: #e6e8f1;
-  --plumi-border-strong: #d5d8e7;
+  --plumi-border: #eae0ec;
+  --plumi-border-strong: #d8c6dc;
 
-  /* ---------- Status ---------- */
-  --plumi-success: #16845b;
-  --plumi-success-soft: #e6f6ef;
+  --plumi-success: #14754f;
+  --plumi-success-soft: #e8f6ee;
 
-  --plumi-warning: #a96b0a;
-  --plumi-warning-soft: #fff4d9;
+  --plumi-warning: #956008;
+  --plumi-warning-soft: #fff4dc;
 
-  --plumi-danger: #c93636;
-  --plumi-danger-soft: #fff0f0;
+  --plumi-danger: #bc304b;
+  --plumi-danger-soft: #fff0f3;
 
-  --plumi-info: #3466cc;
-  --plumi-info-soft: #eaf1ff;
+  --plumi-info: #3263b7;
+  --plumi-info-soft: #edf3ff;
 
-  /* ---------- Sidebar ---------- */
   --plumi-sidebar-bg: #ffffff;
-  --plumi-sidebar-ink: #4d536b;
-  --plumi-sidebar-muted: #858ba1;
-  --plumi-sidebar-hover: #f2f3fc;
-  --plumi-sidebar-active-bg: #eeeeff;
-  --plumi-sidebar-active-ink: #4d4dc5;
-  --plumi-sidebar-border: #e9eaf3;
+  --plumi-sidebar-ink: #625167;
+  --plumi-sidebar-muted: #85718b;
+  --plumi-sidebar-hover: #faf4fb;
+  --plumi-sidebar-active-bg: #f3e8f4;
+  --plumi-sidebar-active-ink: #58065f;
+  --plumi-sidebar-border: #eee5f0;
 
-  /* ---------- Focus ---------- */
-  --plumi-focus-ring: 0 0 0 3px rgb(91 91 214 / 24%);
+  --plumi-focus-ring: 0 0 0 3px rgb(88 6 95 / 18%);
+
+  --ion-color-primary: #58065f;
+  --ion-color-primary-rgb: 88, 6, 95;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #4d0554;
+  --ion-color-primary-tint: #691f6f;
+
+  --ion-color-secondary: #963b8e;
+  --ion-color-secondary-rgb: 150, 59, 142;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-contrast-rgb: 255, 255, 255;
+  --ion-color-secondary-shade: #84347d;
+  --ion-color-secondary-tint: #a04f99;
+
+  --ion-font-family: var(--plumi-font-body);
+  --ion-background-color: var(--plumi-bg);
+  --ion-text-color: var(--plumi-ink);
+  --ion-border-color: var(--plumi-border);
+  --ion-item-background: var(--plumi-surface);
+  --ion-toolbar-background: var(--plumi-surface);
+  --ion-toolbar-color: var(--plumi-ink);
+  --ion-card-background: var(--plumi-surface);
+  --ion-placeholder-color: var(--plumi-text-muted);
 }
 
-/* ---------- Dark semantic palette ---------- */
 :root.dark,
 :root[data-theme="dark"],
 .dark,
 [data-theme="dark"] {
-  --plumi-primary: #a5a4ff;
-  --plumi-primary-hover: #b7b6ff;
-  --plumi-primary-active: #c8c7ff;
-  --plumi-primary-soft: #292946;
-  --plumi-primary-subtle: #202036;
+  --plumi-primary: #aa459f;
+  --plumi-primary-hover: #b34fa8;
+  --plumi-primary-active: #993b8f;
+  --plumi-primary-soft: #38203b;
+  --plumi-primary-subtle: #251628;
 
-  --plumi-accent: #c4a7ff;
-  --plumi-accent-soft: #302443;
+  --plumi-accent: #e1a2d6;
+  --plumi-accent-soft: #392236;
 
-  --plumi-bg: #111323;
-  --plumi-surface: #191c30;
-  --plumi-surface-raised: #20243b;
-  --plumi-surface-muted: #252940;
+  --plumi-bg: #151017;
+  --plumi-surface: #211824;
+  --plumi-surface-raised: #2b202e;
+  --plumi-surface-muted: #302334;
 
-  --plumi-ink: #ebedfa;
-  --plumi-text-muted: #a6abc3;
-  --plumi-text-subtle: #858ba7;
+  --plumi-ink: #f7edf8;
+  --plumi-text-muted: #c0adc5;
+  --plumi-text-subtle: #aa94b0;
 
-  --plumi-border: #30344d;
-  --plumi-border-strong: #444965;
+  --plumi-border: #423047;
+  --plumi-border-strong: #604867;
 
-  --plumi-success: #55d6a0;
-  --plumi-success-soft: #193c32;
+  --plumi-success: #69d6a6;
+  --plumi-success-soft: #19382c;
 
-  --plumi-warning: #f2c66d;
-  --plumi-warning-soft: #3c3020;
+  --plumi-warning: #edc36f;
+  --plumi-warning-soft: #3b301e;
 
-  --plumi-danger: #ff8585;
-  --plumi-danger-soft: #40252d;
+  --plumi-danger: #ff94aa;
+  --plumi-danger-soft: #43232e;
 
-  --plumi-info: #91b5ff;
-  --plumi-info-soft: #202e4a;
+  --plumi-info: #9bbcff;
+  --plumi-info-soft: #25304a;
 
-  --plumi-sidebar-bg: #191c30;
-  --plumi-sidebar-ink: #c4c8dd;
-  --plumi-sidebar-muted: #979db9;
-  --plumi-sidebar-hover: #252940;
-  --plumi-sidebar-active-bg: #303052;
-  --plumi-sidebar-active-ink: #c1c0ff;
-  --plumi-sidebar-border: #30344d;
+  --plumi-sidebar-bg: #1d1520;
+  --plumi-sidebar-ink: #ddcde1;
+  --plumi-sidebar-muted: #b39cba;
+  --plumi-sidebar-hover: #2c1f30;
+  --plumi-sidebar-active-bg: #3b2440;
+  --plumi-sidebar-active-ink: #f1c7eb;
+  --plumi-sidebar-border: #3a2a40;
 
-  --plumi-focus-ring: 0 0 0 3px rgb(165 164 255 / 30%);
+  --plumi-shadow-card:
+    0 2px 8px rgb(0 0 0 / 10%),
+    0 8px 24px rgb(0 0 0 / 12%);
+
+  --plumi-shadow-raised:
+    0 4px 12px rgb(0 0 0 / 14%),
+    0 16px 36px rgb(0 0 0 / 18%);
+
+  --plumi-shadow-popover:
+    0 8px 24px rgb(0 0 0 / 20%),
+    0 24px 56px rgb(0 0 0 / 24%);
+
+  --plumi-shadow-drawer:
+    12px 0 48px rgb(0 0 0 / 36%);
+
+  --plumi-focus-ring: 0 0 0 3px rgb(225 162 214 / 26%);
+
+  --ion-color-primary: #aa459f;
+  --ion-color-primary-rgb: 170, 69, 159;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #963d8c;
+  --ion-color-primary-tint: #b358a9;
+
+  --ion-color-secondary: #e1a2d6;
+  --ion-color-secondary-rgb: 225, 162, 214;
+  --ion-color-secondary-contrast: #211824;
+  --ion-color-secondary-contrast-rgb: 33, 24, 36;
+  --ion-color-secondary-shade: #c68fbc;
+  --ion-color-secondary-tint: #e4abda;
+
+  --ion-background-color: var(--plumi-bg);
+  --ion-text-color: var(--plumi-ink);
+  --ion-border-color: var(--plumi-border);
+  --ion-item-background: var(--plumi-surface);
+  --ion-toolbar-background: var(--plumi-surface);
+  --ion-toolbar-color: var(--plumi-ink);
+  --ion-card-background: var(--plumi-surface);
+  --ion-placeholder-color: var(--plumi-text-muted);
 }
 
-/* ---------- Global application defaults ---------- */
 html,
 body,
 #app {
@@ -243,4 +294,24 @@ a:focus-visible {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+:root {
+  --plumi-sidebar-width: 248px;
+  --plumi-sidebar-collapsed-width: 84px;
+  --plumi-topbar-height: 76px;
+  --plumi-content-max-width: 1440px;
+  --plumi-page-padding: clamp(18px, 3vw, 40px);
+  --plumi-radius-sm: 8px;
+  --plumi-radius-md: 12px;
+  --plumi-radius-lg: 20px;
+  --plumi-radius-xl: 26px;
+  --plumi-text-xs: .75rem;
+  --plumi-text-sm: .875rem;
+  --plumi-text-md: 1rem;
+  --plumi-text-lg: 1.125rem;
+  --plumi-text-xl: 1.5rem;
+  --plumi-text-2xl: clamp(1.5rem, 2.5vw, 2rem);
+  --plumi-text-3xl: clamp(2.5rem, 5vw, 4rem);
+  --plumi-panel-padding: clamp(18px, 2vw, 28px);
+  --plumi-section-gap: 24px;
 }

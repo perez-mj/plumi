@@ -14,14 +14,14 @@
         <EmptyState v-else-if="!logs.length" title="No activity" message="No activity logged yet." :icon="listOutline" />
 
         <div v-else class="logs__table">
-          <table>
+          <table class="responsive-table">
             <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Entity</th></tr></thead>
             <tbody>
               <tr v-for="l in logs" :key="l.id">
-                <td>{{ new Date(l.created_at).toLocaleString() }}</td>
-                <td>{{ l.user_name || '—' }}</td>
-                <td><span class="logs__action">{{ l.action }}</span></td>
-                <td class="logs__entity">{{ l.entity_type || '—' }}</td>
+                <td data-label="Time">{{ new Date(l.created_at).toLocaleString() }}</td>
+                <td data-label="User">{{ l.user_name || '—' }}</td>
+                <td data-label="Action"><span class="logs__action">{{ l.action }}</span></td>
+                <td data-label="Entity" class="logs__entity">{{ l.entity_type || '—' }}</td>
               </tr>
             </tbody>
           </table>
@@ -92,4 +92,18 @@ th, td { padding: var(--size-3, 0.75rem); text-align: left; border-bottom: 1px s
 th { background: var(--plumi-surface-muted); font-weight: var(--plumi-weight-semibold); color: var(--plumi-text-muted); font-size: var(--plumi-text-xs); text-transform: uppercase; letter-spacing: 0.06em; }
 .logs__action { padding: 2px 8px; border-radius: var(--radius-round); background: var(--plumi-info-soft); color: var(--plumi-info); font-size: var(--plumi-text-xs); font-weight: var(--plumi-weight-semibold); }
 .logs__entity { color: var(--plumi-text-muted); }
+
+.responsive-table th, .responsive-table td { padding:18px 22px; }
+.responsive-table tbody tr:last-child td { border-bottom:0; }
+.responsive-table tbody tr:hover { background:var(--plumi-primary-subtle); }
+@media(max-width:640px) {
+ .responsive-table, .responsive-table tbody { display:block; width:100%; }
+ .responsive-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+ .responsive-table tbody { padding:12px; }
+ .responsive-table tr { display:block; padding:12px; margin-bottom:12px; border:1px solid var(--plumi-border); border-radius:16px; background:var(--plumi-surface); }
+ .responsive-table tr:last-child { margin-bottom:0; }
+ .responsive-table td { display:grid; grid-template-columns:70px minmax(0,1fr); align-items:center; gap:12px; padding:9px 2px; border:0; overflow-wrap:anywhere; font-size:.8125rem; }
+ .responsive-table td::before { content:attr(data-label); color:var(--plumi-text-muted); font-size:.7rem; font-weight:600; }
+ .responsive-table td > ion-button { justify-self:start; margin:0; }
+}
 </style>
