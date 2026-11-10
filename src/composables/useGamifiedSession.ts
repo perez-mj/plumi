@@ -6,7 +6,6 @@ import type {
   SessionDraftAnswer,
   Difficulty,
 } from '@/types/app';
-import type { PracticeQuestion as PQ } from '@/services/ai';
 
 export interface AnswerFeedback {
   correct: boolean;

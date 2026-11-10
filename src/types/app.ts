@@ -67,3 +67,13 @@ export interface SessionDraftAnswer {
   isCorrect: boolean;
   timeTaken: number;
 }
+
+export interface PracticeQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  answer: string;
+  explanation: string | null;
+  difficulty: Difficulty;
+  position: number;
+}

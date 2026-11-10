@@ -12,10 +12,11 @@
 
         <LoadingState v-if="loading" />
         <ErrorState v-else-if="error" :message="error" @retry="load" />
-        <EmptyState
+                <EmptyState
           v-else-if="!materials.length"
           title="No materials available"
           message="Your course has no materials with extracted text yet."
+          :icon="documentTextOutline"
         />
 
         <template v-else>
@@ -85,7 +86,7 @@ import {
   IonRadioGroup, IonRadio, IonSelect, IonSelectOption, IonSpinner,
 } from '@ionic/vue';
 import {
-  arrowBackOutline, chevronForwardOutline,
+  arrowBackOutline, chevronForwardOutline, documentTextOutline
 } from 'ionicons/icons';
 import LoadingState from '@/components/common/LoadingState.vue';
 import ErrorState from '@/components/common/ErrorState.vue';
