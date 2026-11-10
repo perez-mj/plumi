@@ -31,3 +31,39 @@ export interface CourseWithMeta extends Course {
 export interface ModuleWithLessons extends Module {
   lessons: Lesson[];
 }
+
+export type GeneratedQuestion = Database['public']['Tables']['generated_questions']['Row'];
+export type MaterialGeneration = Database['public']['Tables']['material_generations']['Row'];
+export type QuestionSessionResult = Database['public']['Tables']['question_session_results']['Row'];
+export type QuestionSessionAnswer = Database['public']['Tables']['question_session_answers']['Row'];
+
+export type QuestionType = Enums<'QuestionType'>;
+export type AiGenerationType = Enums<'AiGenerationType'>;
+export type AiDetailLevel = Enums<'AiDetailLevel'>;
+
+export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
+
+/**
+ * The `choices` column on generated_questions is JSON. We store an object
+ * of shape { options: string[], difficulty: Difficulty } so the gamification
+ * layer can score by difficulty without a schema change.
+ */
+export interface QuestionChoices {
+  options: string[];
+  difficulty: Difficulty;
+}
+
+export interface GamificationSettings {
+  enabled: boolean;
+  base_points: Record<Difficulty, number>;
+  combo_thresholds: Record<string, number>; // "2" -> streak >= 5, "3" -> streak >= 10
+  combo_cap: number;
+  completion_bonus: number;
+  time_bonus_enabled: boolean;
+}
+
+export interface SessionDraftAnswer {
+  questionId: string;
+  isCorrect: boolean;
+  timeTaken: number;
+}

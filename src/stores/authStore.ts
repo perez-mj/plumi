@@ -2,6 +2,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { supabase } from '@/lib/supabase';
+import { authRedirectTo } from '@/lib/authRedirect';
 
 export type Role = 'admin' | 'instructor' | 'student';
 
@@ -105,13 +106,16 @@ export const useAuthStore = defineStore('auth', () => {
 
     if (!listenerBound) {
       listenerBound = true;
-      supabase.auth.onAuthStateChange(async (event, session) => {
-        // TOKEN_REFRESHED / INITIAL_SESSION / SIGNED_IN / SIGNED_OUT / etc.
+            supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          // Recovery link exchanged — ResetPasswordPage will read the session.
+          // Do NOT set user here; just let the recovery page take over.
+          return;
+        }
         if (event === 'SIGNED_OUT' || !session?.user) {
           user.value = null;
           return;
         }
-        // Skip re-fetch on mere token refresh — user object is unchanged.
         if (event === 'TOKEN_REFRESHED' && user.value) return;
 
         try {
@@ -174,6 +178,112 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+    /**
+   * Register a new account. Sends a confirmation email via Supabase Auth
+   * (delivered through Resend SMTP in production).
+   * The profile row is created by the DB trigger (see `profiles` migration);
+   * if your trigger reads `raw_user_meta_data`, the names are passed here.
+   */
+  async function register(input: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+  }): Promise<void> {
+    loading.value = true;
+    error.value = null;
+    try {
+      const { data, error: err } = await supabase.auth.signUp({
+        email: input.email,
+        password: input.password,
+        options: {
+          emailRedirectTo: authRedirectTo(),
+          data: {
+            first_name: input.firstName,
+            last_name: input.lastName,
+          },
+        },
+      });
+      if (err) throw err;
+
+      // If confirmations are enabled (recommended in prod), `data.session`
+      // will be null and the user must click the email link first.
+      // If confirmations are disabled (dev), we sign them in immediately.
+      if (data.session && data.user) {
+        user.value = await fetchProfile(data.user.id);
+      }
+    } catch (e: unknown) {
+      const msg = extractMessage(e);
+      error.value = msg;
+      throw new Error(msg);
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * Send a password recovery email. Always resolves to avoid leaking which
+   * addresses exist (Supabase does this server-side too, but this keeps the
+   * UX consistent).
+   */
+  async function sendPasswordReset(email: string): Promise<void> {
+    loading.value = true;
+    error.value = null;
+    try {
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: authRedirectTo(),
+      });
+      if (err) throw err;
+    } catch (e: unknown) {
+      const msg = extractMessage(e);
+      error.value = msg;
+      throw new Error(msg);
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * Update the password for the *currently authenticated* user.
+   * Only call after a recovery link has established a session.
+   */
+  async function updatePassword(newPassword: string): Promise<void> {
+    loading.value = true;
+    error.value = null;
+    try {
+      const { error: err } = await supabase.auth.updateUser({ password: newPassword });
+      if (err) throw err;
+    } catch (e: unknown) {
+      const msg = extractMessage(e);
+      error.value = msg;
+      throw new Error(msg);
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * Re-send the confirmation email for an account that hasn't confirmed yet.
+   */
+  async function resendConfirmation(email: string): Promise<void> {
+    loading.value = true;
+    error.value = null;
+    try {
+      const { error: err } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: { emailRedirectTo: authRedirectTo() },
+      });
+      if (err) throw err;
+    } catch (e: unknown) {
+      const msg = extractMessage(e);
+      error.value = msg;
+      throw new Error(msg);
+    } finally {
+      loading.value = false;
+    }
+  }
+
   /**
    * Reload the current user's profile from the DB.
    * Useful after profile edits.
@@ -182,7 +292,7 @@ export const useAuthStore = defineStore('auth', () => {
     await hydrateFromSession();
   }
 
-  return {
+    return {
     // state
     user,
     ready,
@@ -197,6 +307,10 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     refresh,
+    register,          
+    sendPasswordReset, 
+    updatePassword,    
+    resendConfirmation,
   };
 });
 

@@ -55,4 +55,16 @@ export const studentRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/student/grades/MyGradesPage.vue'),
     meta: { requiresRole: 'student' },
   },
+  {
+    path: 'student/courses/:id/ai',
+    name: 'student-ai-practice',
+    component: () => import('@/views/student/ai/AiPracticePage.vue'),
+    meta: { requiresRole: 'student' },
+  },
+  {
+    path: 'student/ai/sessions/:generationId',
+    name: 'student-ai-session',
+    component: () => import('@/views/student/ai/GamifiedSessionPage.vue'),
+    meta: { requiresRole: 'student' },
+  },
 ];

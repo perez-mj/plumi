@@ -1,3 +1,4 @@
+/* src/theme/global.css */
 .page-shell {
   display:flex; flex-direction:column; gap:24px; width:100%; min-width:0;
   max-width:var(--plumi-content-max-width); padding:var(--plumi-page-padding);

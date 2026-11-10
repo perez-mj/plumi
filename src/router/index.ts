@@ -13,7 +13,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/app',
     component: () => import('@/layouts/DefaultLayout.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, title: 'Plumi' },
     children: [
       ...adminRoutes,
       ...instructorRoutes,
@@ -22,6 +22,7 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },
+
 ];
 
 const router = createRouter({

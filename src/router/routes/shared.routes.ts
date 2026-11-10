@@ -10,7 +10,7 @@ export const sharedRoutes: RouteRecordRaw[] = [
   {
     path: 'meetings',
     name: 'meetings',
-    component: () => import('@/views/shared/meetings/MeetingsListPage.vue'),
+    component: () => import('@/views/shared/meetings/MeetingsCalendarPage.vue'),
   },
   {
     path: 'meetings/:id/room',

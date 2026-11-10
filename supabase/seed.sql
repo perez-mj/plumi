@@ -110,3 +110,14 @@ INSERT INTO public.system_settings (key, value) VALUES
   ('meeting.reminder_minutes',      '30'::jsonb),
   ('platform.name',                 '"Plumi"'::jsonb)
 ON CONFLICT (key) DO NOTHING;
+
+INSERT INTO public.system_settings (key, value) VALUES
+  ('gamification.defaults', '{
+     "enabled": true,
+     "base_points":      { "EASY": 10, "MEDIUM": 20, "HARD": 30 },
+     "combo_thresholds": { "2": 5, "3": 10 },
+     "combo_cap":        3,
+     "completion_bonus": 5,
+     "time_bonus_enabled": false
+   }'::jsonb)
+ON CONFLICT (key) DO NOTHING;

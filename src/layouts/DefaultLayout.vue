@@ -420,11 +420,6 @@ const navItems = computed(() => {
         label: 'My Courses',
         icon: bookOutline,
       },
-      {
-        to: '/app/instructor/assignments',
-        label: 'Assignments',
-        icon: documentTextOutline,
-      },
       ...shared,
     ];
   }

@@ -1241,6 +1241,93 @@ export type Database = {
           },
         ]
       }
+      question_session_answers: {
+        Row: {
+          id: string
+          is_correct: boolean
+          question_id: string
+          session_id: string
+          time_taken_seconds: number | null
+        }
+        Insert: {
+          id?: string
+          is_correct: boolean
+          question_id: string
+          session_id: string
+          time_taken_seconds?: number | null
+        }
+        Update: {
+          id?: string
+          is_correct?: boolean
+          question_id?: string
+          session_id?: string
+          time_taken_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_session_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "generated_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_session_answers_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "question_session_results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      question_session_results: {
+        Row: {
+          accuracy: number
+          completed_at: string
+          duration_seconds: number | null
+          generation_id: string
+          id: string
+          longest_streak: number
+          score: number
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number
+          completed_at?: string
+          duration_seconds?: number | null
+          generation_id: string
+          id?: string
+          longest_streak?: number
+          score?: number
+          user_id: string
+        }
+        Update: {
+          accuracy?: number
+          completed_at?: string
+          duration_seconds?: number | null
+          generation_id?: string
+          id?: string
+          longest_streak?: number
+          score?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_session_results_generation_id_fkey"
+            columns: ["generation_id"]
+            isOneToOne: false
+            referencedRelation: "material_generations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_session_results_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           permission_id: string
