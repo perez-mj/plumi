@@ -1519,6 +1519,23 @@ export type Database = {
     }
     Functions: {
       current_role_name: { Args: never; Returns: string }
+      enroll_in_course: {
+        Args: { p_course_id: string; p_enrollment_key?: string }
+        Returns: {
+          completed_at: string | null
+          course_id: string
+          enrolled_at: string
+          id: string
+          status: Database["public"]["Enums"]["EnrollmentStatus"]
+          student_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "enrollments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_display_names: {
         Args: { p_ids: string[] }
         Returns: {

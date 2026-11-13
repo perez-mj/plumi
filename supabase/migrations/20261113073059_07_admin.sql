@@ -25,8 +25,8 @@ CREATE TABLE public.system_settings (
 
 -- ---------- Indexes ----------
 
-CREATE INDEX activity_logs_user_id_idx   ON public.activity_logs(user_id);
-CREATE INDEX activity_logs_action_idx    ON public.activity_logs(action);
+CREATE INDEX activity_logs_user_id_idx    ON public.activity_logs(user_id);
+CREATE INDEX activity_logs_action_idx     ON public.activity_logs(action);
 CREATE INDEX activity_logs_created_at_idx ON public.activity_logs(created_at);
 CREATE INDEX activity_logs_entity_type_entity_id_idx
   ON public.activity_logs(entity_type, entity_id);

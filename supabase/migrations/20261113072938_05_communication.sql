@@ -75,12 +75,12 @@ CREATE TABLE public.notifications (
 
 -- ---------- Indexes ----------
 
-CREATE INDEX announcements_course_id_idx ON public.announcements(course_id);
-CREATE INDEX announcements_scope_idx     ON public.announcements(scope);
+CREATE INDEX announcements_course_id_idx  ON public.announcements(course_id);
+CREATE INDEX announcements_scope_idx      ON public.announcements(scope);
 CREATE INDEX announcements_created_at_idx ON public.announcements(created_at);
 
 CREATE UNIQUE INDEX conversations_course_id_key ON public.conversations(course_id);
-CREATE INDEX conversations_type_idx ON public.conversations(type);
+CREATE INDEX conversations_type_idx             ON public.conversations(type);
 
 CREATE INDEX conversation_members_user_id_idx ON public.conversation_members(user_id);
 CREATE UNIQUE INDEX conversation_members_conversation_id_user_id_key

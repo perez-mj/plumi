@@ -69,14 +69,22 @@
         </nav>
 
         <div class="sidebar__footer">
-          <div v-if="!collapsed || isMobile" class="user-card">
+          <RouterLink
+            v-if="!collapsed || isMobile"
+            to="/app/profile"
+            class="user-card"
+            :class="{ 'user-card--active': isActive('/app/profile') }"
+            :aria-current="isActive('/app/profile') ? 'page' : undefined"
+            title="View profile"
+            @click="closeMobileNav"
+          >
             <div class="user-card__avatar">{{ userInitials }}</div>
 
             <div class="user-card__meta">
               <span class="user-card__name">{{ displayName }}</span>
               <span class="user-card__role">{{ displayRole }}</span>
             </div>
-          </div>
+          </RouterLink>
 
           <button
             v-if="!isMobile"
@@ -359,24 +367,6 @@ const userInitials = computed(() => {
 const navItems = computed(() => {
   const role = auth.user?.role ?? 'student';
 
-  const shared = [
-    {
-      to: '/app/messages',
-      label: 'Messages',
-      icon: chatbubblesOutline,
-    },
-    {
-      to: '/app/meetings',
-      label: 'Meetings',
-      icon: videocamOutline,
-    },
-    {
-      to: '/app/profile',
-      label: 'Profile',
-      icon: personOutline,
-    },
-  ];
-
   if (role === 'admin') {
     return [
       {
@@ -404,7 +394,6 @@ const navItems = computed(() => {
         label: 'Activity Logs',
         icon: listOutline,
       },
-      ...shared,
     ];
   }
 
@@ -420,7 +409,16 @@ const navItems = computed(() => {
         label: 'My Courses',
         icon: bookOutline,
       },
-      ...shared,
+      {
+        to: '/app/messages',
+        label: 'Messages',
+        icon: chatbubblesOutline,
+      },
+      {
+        to: '/app/meetings',
+        label: 'Meetings',
+        icon: videocamOutline,
+      },
     ];
   }
 
@@ -445,7 +443,16 @@ const navItems = computed(() => {
       label: 'Grades',
       icon: trophyOutline,
     },
-    ...shared,
+    {
+      to: '/app/messages',
+      label: 'Messages',
+      icon: chatbubblesOutline,
+    },
+    {
+      to: '/app/meetings',
+      label: 'Meetings',
+      icon: videocamOutline,
+    },
   ];
 });
 
@@ -454,8 +461,7 @@ const mobileNavItems = computed(() =>
     (item, index) =>
       index === 0 ||
       item.icon === bookOutline ||
-      item.to === '/app/messages' ||
-      item.to === '/app/profile',
+      item.to === '/app/messages',
   ),
 );
 
@@ -692,6 +698,19 @@ async function confirmLogout() {
   border: 1px solid var(--plumi-border);
   border-radius: 14px;
   background: var(--plumi-primary-subtle);
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 160ms, border-color 160ms;
+}
+
+.user-card:hover {
+  background: var(--plumi-sidebar-hover);
+}
+
+.user-card--active {
+  border-color: var(--plumi-primary);
+  background: var(--plumi-primary-soft);
 }
 
 .user-card__avatar,

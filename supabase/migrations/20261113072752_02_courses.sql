@@ -110,10 +110,10 @@ CREATE TABLE public.progress (
 CREATE UNIQUE INDEX categories_name_key ON public.categories(name);
 CREATE UNIQUE INDEX categories_slug_key ON public.categories(slug);
 
-CREATE UNIQUE INDEX courses_code_key ON public.courses(code);
-CREATE INDEX courses_instructor_id_idx ON public.courses(instructor_id);
-CREATE INDEX courses_category_id_idx   ON public.courses(category_id);
-CREATE INDEX courses_status_idx        ON public.courses(status);
+CREATE UNIQUE INDEX courses_code_key       ON public.courses(code);
+CREATE INDEX courses_instructor_id_idx     ON public.courses(instructor_id);
+CREATE INDEX courses_category_id_idx       ON public.courses(category_id);
+CREATE INDEX courses_status_idx            ON public.courses(status);
 
 CREATE INDEX enrollments_student_id_idx ON public.enrollments(student_id);
 CREATE UNIQUE INDEX enrollments_course_id_student_id_key

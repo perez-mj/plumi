@@ -54,10 +54,11 @@ CREATE TABLE public.profiles (
 -- ---------- Indexes ----------
 
 CREATE UNIQUE INDEX roles_name_key ON public.roles(name);
-CREATE UNIQUE INDEX permissions_key_key ON public.permissions(key);
-CREATE UNIQUE INDEX profiles_email_key ON public.profiles(email);
-CREATE INDEX profiles_role_id_idx ON public.profiles(role_id);
-CREATE INDEX profiles_is_active_idx ON public.profiles(is_active);
+CREATE UNIQUE INDEX roles_name_lower_key ON public.roles(LOWER(name));
+CREATE UNIQUE INDEX permissions_key_key  ON public.permissions(key);
+CREATE UNIQUE INDEX profiles_email_key   ON public.profiles(email);
+CREATE INDEX profiles_role_id_idx        ON public.profiles(role_id);
+CREATE INDEX profiles_is_active_idx      ON public.profiles(is_active);
 
 -- ---------- Foreign keys ----------
 
@@ -81,9 +82,9 @@ CREATE TRIGGER profiles_set_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
--- ---------- RLS (enable now; policies in 08) ----------
+-- ---------- RLS (enable now; policies in 09) ----------
 
-ALTER TABLE public.roles             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.permissions       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.role_permissions  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.profiles          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.roles            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.permissions      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.role_permissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles         ENABLE ROW LEVEL SECURITY;

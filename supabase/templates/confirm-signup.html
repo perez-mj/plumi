@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="supported-color-schemes" content="light dark" />
+  <title>Confirm your Plumi account</title>
+  <!--[if mso]>
+  <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
+  <![endif]-->
+  <style>
+    @media (prefers-color-scheme: dark) {
+      .body-bg { background-color:#151017 !important; }
+      .card { background-color:#211824 !important; border-color:#423047 !important; }
+      .ink { color:#f7edf8 !important; }
+      .muted { color:#c0adc5 !important; }
+      .btn-bg { background-color:#aa459f !important; }
+      .hairline { border-color:#423047 !important; }
+    }
+  </style>
+</head>
+<body class="body-bg" style="margin:0;padding:0;background-color:#faf7fb;font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+
+  <div style="display:none;font-size:1px;color:#faf7fb;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+    One tap to activate your Plumi workspace — courses, conversations, and progress await.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="body-bg" style="background-color:#faf7fb;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="card"
+               style="max-width:560px;background-color:#ffffff;border:1px solid #eae0ec;border-radius:24px;overflow:hidden;">
+
+          <!-- Brand strip -->
+          <tr>
+            <td style="background-color:#58065f;padding:24px 32px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="left" valign="middle" style="font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                    <img src="{{LOGO_URL}}"
+                         alt="Plumi"
+                         width="40" height="40"
+                         style="display:inline-block;width:40px;height:40px;border:0;outline:none;text-decoration:none;vertical-align:middle;border-radius:12px;background-color:#ffffff;" />
+                    <span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:-.01em;margin-left:12px;vertical-align:middle;">Plumi</span>
+                  </td>
+                  <td align="right" valign="middle">
+                    <span style="color:#e2c7e5;font-size:11px;font-weight:600;letter-spacing:.16em;">LEARNING WORKSPACE</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 40px 8px 40px;">
+              <p class="muted" style="margin:0 0 12px 0;color:#756779;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;">Confirm your email</p>
+              <h1 class="ink" style="margin:0 0 16px 0;color:#2c2030;font-size:28px;font-weight:750;line-height:1.25;letter-spacing:-.03em;">
+                Welcome to Plumi
+              </h1>
+              <p class="ink" style="margin:0 0 16px 0;color:#2c2030;font-size:15px;line-height:1.7;">
+                Hi{{ if .Data.first_name }} {{ .Data.first_name }}{{ end }} — thanks for signing up. Confirm your email address to activate your account and start learning.
+              </p>
+              <p class="muted" style="margin:0 0 28px 0;color:#756779;font-size:14px;line-height:1.7;">
+                You're confirming the address <strong class="ink" style="color:#2c2030;">{{ .Email }}</strong>.
+              </p>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
+                <tr>
+                  <td align="center" class="btn-bg" style="background-color:#58065f;border-radius:12px;">
+                    <a href="{{ .ConfirmationURL }}"
+                       style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:650;text-decoration:none;font-family:Inter,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-radius:12px;">
+                      Confirm email address
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p class="muted" style="margin:0 0 8px 0;color:#756779;font-size:13px;line-height:1.7;">
+                Button not working? Copy and paste this link into your browser:
+              </p>
+              <p style="margin:0 0 32px 0;word-break:break-all;">
+                <a href="{{ .ConfirmationURL }}" style="color:#58065f;font-size:12px;line-height:1.6;text-decoration:underline;">{{ .ConfirmationURL }}</a>
+              </p>
+
+              <p class="muted" style="margin:0 0 32px 0;color:#756779;font-size:13px;line-height:1.7;">
+                This link expires in 24 hours. If you didn't create a Plumi account, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr><td class="hairline" style="border-top:1px solid #eae0ec;font-size:0;line-height:0;">&nbsp;</td></tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:24px 40px 32px 40px;">
+              <p class="muted" style="margin:0 0 6px 0;color:#847387;font-size:12px;line-height:1.7;">
+                This is an automated message — please do not reply to this email.
+              </p>
+              <p class="muted" style="margin:0;color:#847387;font-size:12px;line-height:1.7;">
+                Plumi Learning Workspace · Sent to {{ .Email }}
+              </p>
+            </td>
+          </tr>
+        </table>
+
+        <p class="muted" style="margin:24px 0 0 0;color:#847387;font-size:11px;line-height:1.6;text-align:center;">
+          © Plumi. All rights reserved.
+        </p>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

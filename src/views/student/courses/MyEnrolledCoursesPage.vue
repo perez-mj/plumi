@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onActivated } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   IonPage, IonContent, IonRefresher, IonRefresherContent, IonButton,
@@ -38,8 +38,7 @@ import LoadingState from '@/components/common/LoadingState.vue';
 import ErrorState from '@/components/common/ErrorState.vue';
 import EmptyState from '@/components/common/EmptyState.vue';
 import CourseCard from '@/components/courses/CourseCard.vue';
-import { listMyEnrollments } from '@/services/enrollments';
-import { listCourses } from '@/services/courses';
+import { listMyEnrolledCourses } from '@/services/enrollments';
 import type { CourseWithMeta } from '@/types/app';
 
 const router = useRouter();
@@ -50,13 +49,12 @@ const error = ref<string | null>(null);
 async function load() {
   error.value = null;
   try {
-    const enrollments = await listMyEnrollments();
-    const ids = new Set(enrollments.map((e) => e.course_id));
-    const all = await listCourses();
-    courses.value = all.filter((c) => ids.has(c.id));
+    courses.value = await listMyEnrolledCourses();
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Failed to load.';
-  } finally { loading.value = false; }
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function onRefresh(ev: CustomEvent) {
@@ -69,6 +67,8 @@ function open(id: string) {
 }
 
 onMounted(load);
+// Ionic keeps pages alive; refetch whenever the view is re-entered.
+onActivated(load);
 </script>
 
 <style scoped>

@@ -1,102 +1,30 @@
 -- ============================================================
--- 08_rls_policies
+-- 09_rls_policies: single source of truth for all policies.
 -- ============================================================
 -- Design notes
---  * current_role_name() is SECURITY DEFINER so it works even when the
---    caller has no policy on profiles (e.g. before their row is created).
---  * Role names are stored UPPERCASE ('ADMIN', 'INSTRUCTOR', 'STUDENT').
---    Policies compare LOWER(role) = 'admin' etc. to avoid the mismatch
---    that silently made every admin-only policy fail in v1.
---  * Every table with RLS enabled gets at least one explicit policy.
---    Enabling RLS with no policies is "deny all" — always intentional.
+--  * Every table with RLS enabled has at least one explicit
+--    policy. Enabling RLS with no policies is "deny all".
+--  * Role names are stored UPPERCASE; helpers compare LOWER().
+--  * enrollments: NO client INSERT policy — enrollment must go
+--    through enroll_in_course RPC (14). Students may UPDATE
+--    only their own row to ACTIVE/DROPPED.
+--  * submissions_student_update: students may update their own
+--    row only while SUBMITTED/LATE/RETURNED, and only to
+--    SUBMITTED/LATE with graded fields NULL. Enforced in RLS
+--    *and* by trigger (17).
+--  * conversation_members: INSERT is admin-only. The
+--    messaging_open_* RPCs (13) bypass via SECURITY DEFINER.
+--    UPDATE is self-only, guarded by trigger (11).
 -- ============================================================
-
--- ------------------------------------------------------------
--- Helpers
--- ------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.current_role_name()
-RETURNS text
-LANGUAGE sql STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT LOWER(r.name)
-  FROM public.profiles p
-  JOIN public.roles r ON r.id = p.role_id
-  WHERE p.id = auth.uid();
-$$;
-
--- Convenience: is the current user an admin?
-CREATE OR REPLACE FUNCTION public.is_admin()
-RETURNS boolean
-LANGUAGE sql STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT COALESCE(public.current_role_name() = 'admin', false);
-$$;
-
--- Convenience: is the current user enrolled in a course?
-CREATE OR REPLACE FUNCTION public.is_enrolled(p_course_id uuid)
-RETURNS boolean
-LANGUAGE sql STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.enrollments
-    WHERE course_id = p_course_id
-      AND student_id = auth.uid()
-      AND status = 'ACTIVE'
-  );
-$$;
-
--- Convenience: does the current user teach a course?
-CREATE OR REPLACE FUNCTION public.teaches_course(p_course_id uuid)
-RETURNS boolean
-LANGUAGE sql STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.courses
-    WHERE id = p_course_id AND instructor_id = auth.uid()
-  );
-$$;
-
--- Convenience: is the current user a member of a conversation?
-CREATE OR REPLACE FUNCTION public.is_conversation_member(p_conversation_id uuid)
-RETURNS boolean
-LANGUAGE sql STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.conversation_members
-    WHERE conversation_id = p_conversation_id AND user_id = auth.uid()
-  );
-$$;
 
 -- ============================================================
 -- 01 — identity
 -- ============================================================
 
--- roles / permissions / role_permissions: readable by any authenticated user
--- (the UI needs role names to label the user). Writes are admin-only and are
--- meant to go through service_role / seed scripts, not end-user requests.
-CREATE POLICY roles_read ON public.roles
-  FOR SELECT TO authenticated USING (true);
+CREATE POLICY roles_read            ON public.roles            FOR SELECT TO authenticated USING (true);
+CREATE POLICY permissions_read      ON public.permissions      FOR SELECT TO authenticated USING (true);
+CREATE POLICY role_permissions_read ON public.role_permissions FOR SELECT TO authenticated USING (true);
 
-CREATE POLICY permissions_read ON public.permissions
-  FOR SELECT TO authenticated USING (true);
-
-CREATE POLICY role_permissions_read ON public.role_permissions
-  FOR SELECT TO authenticated USING (true);
-
--- profiles: everyone can read their own row. Admins can read/write all.
--- Instructors can read the profiles of students enrolled in their courses
--- (needed for rosters and submissions). Writes to another user's profile
--- stay admin-only.
 CREATE POLICY profiles_self_select ON public.profiles
   FOR SELECT TO authenticated
   USING (id = auth.uid() OR public.is_admin());
@@ -110,7 +38,6 @@ CREATE POLICY profiles_self_insert ON public.profiles
   FOR INSERT TO authenticated
   WITH CHECK (id = auth.uid() OR public.is_admin());
 
--- Instructors: read students enrolled in their courses
 CREATE POLICY profiles_instructor_read_students ON public.profiles
   FOR SELECT TO authenticated
   USING (
@@ -167,10 +94,14 @@ CREATE POLICY enrollments_read ON public.enrollments
     OR public.is_admin()
   );
 
-CREATE POLICY enrollments_student_insert ON public.enrollments
-  FOR INSERT TO authenticated
+-- NO INSERT policy: enrollment goes through enroll_in_course().
+
+CREATE POLICY enrollments_student_update ON public.enrollments
+  FOR UPDATE TO authenticated
+  USING (student_id = auth.uid())
   WITH CHECK (
-    student_id = auth.uid() OR public.is_admin()
+    student_id = auth.uid()
+    AND status IN ('ACTIVE', 'DROPPED')
   );
 
 CREATE POLICY enrollments_student_delete ON public.enrollments
@@ -280,6 +211,20 @@ CREATE POLICY submissions_read ON public.submissions
 CREATE POLICY submissions_student_insert ON public.submissions
   FOR INSERT TO authenticated
   WITH CHECK (student_id = auth.uid());
+
+CREATE POLICY submissions_student_update ON public.submissions
+  FOR UPDATE TO authenticated
+  USING (
+    student_id = auth.uid()
+    AND status IN ('SUBMITTED', 'LATE', 'RETURNED')
+  )
+  WITH CHECK (
+    student_id = auth.uid()
+    AND status IN ('SUBMITTED', 'LATE')
+    AND graded_by IS NULL
+    AND score IS NULL
+    AND graded_at IS NULL
+  );
 
 CREATE POLICY submissions_grader_update ON public.submissions
   FOR UPDATE TO authenticated
@@ -392,8 +337,6 @@ CREATE POLICY flashcard_reviews_own ON public.flashcard_reviews
 -- 05 — communication
 -- ============================================================
 
--- Announcements: read if SYSTEM-scoped, or if the current user is enrolled
--- in / teaches the course. Instructor of the course (or admin) writes.
 CREATE POLICY announcements_read ON public.announcements
   FOR SELECT TO authenticated
   USING (
@@ -434,13 +377,17 @@ CREATE POLICY conversation_members_read ON public.conversation_members
     OR public.is_admin()
   );
 
+-- INSERT is admin-only. The messaging_open_* RPCs (13) bypass via
+-- SECURITY DEFINER.
 CREATE POLICY conversation_members_insert ON public.conversation_members
   FOR INSERT TO authenticated
-  WITH CHECK (
-    public.is_admin()
-    OR user_id = auth.uid()
-    OR public.is_conversation_member(conversation_id)
-  );
+  WITH CHECK (public.is_admin());
+
+-- UPDATE is self-only, guarded by messaging_guard_member_update (11).
+CREATE POLICY conversation_members_self_update ON public.conversation_members
+  FOR UPDATE TO authenticated
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
 
 CREATE POLICY messages_member_read ON public.messages
   FOR SELECT TO authenticated

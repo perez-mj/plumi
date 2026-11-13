@@ -23,87 +23,122 @@
               <p v-if="course.code" class="course-home__code">{{ course.code }}</p>
               <h1 class="course-home__title">{{ course.title }}</h1>
               <p v-if="course.description" class="course-home__desc">{{ course.description }}</p>
+
               <div v-if="isEnrolled" class="course-home__progress">
                 <div class="progress"><div class="progress__bar" :style="{ width: progress.percent + '%' }" /></div>
                 <span>{{ progress.percent }}% complete ({{ progress.completed }}/{{ progress.total }})</span>
               </div>
-              <ion-button v-if="!isEnrolled" @click="showEnroll = true">Enroll</ion-button>
+
+              <div class="course-home__actions">
+                <ion-button v-if="!isEnrolled && course.status === 'PUBLISHED'" @click="showEnroll = true">
+                  Enroll
+                </ion-button>
+                <ion-button
+                  v-else-if="isEnrolled"
+                  fill="clear"
+                  color="medium"
+                  :disabled="withdrawing"
+                  @click="withdraw"
+                >
+                  {{ withdrawing ? 'Withdrawing…' : 'Withdraw' }}
+                </ion-button>
+                <ion-note v-else-if="course.status !== 'PUBLISHED'" color="medium">
+                  This course is not open for enrollment.
+                </ion-note>
+              </div>
             </div>
           </header>
 
-          <ion-segment v-model="tab" class="course-home__tabs">
-            <ion-segment-button value="content"><ion-label>Content</ion-label></ion-segment-button>
-            <ion-segment-button value="assignments"><ion-label>Assignments</ion-label></ion-segment-button>
-            <ion-segment-button value="announcements"><ion-label>Announcements</ion-label></ion-segment-button>
-          </ion-segment>
+          <template v-if="isEnrolled">
+            <ion-segment v-model="tab" class="course-home__tabs">
+              <ion-segment-button value="content"><ion-label>Content</ion-label></ion-segment-button>
+              <ion-segment-button value="assignments"><ion-label>Assignments</ion-label></ion-segment-button>
+              <ion-segment-button value="announcements"><ion-label>Announcements</ion-label></ion-segment-button>
+            </ion-segment>
 
-          <section v-if="tab === 'content'" class="panel">
-            <EmptyState v-if="!modules.length" title="No content yet" message="Lessons will appear here." :icon="albumsOutline" />
-            <div v-else class="modules">
-              <article v-for="m in modules" :key="m.id" class="module">
-                <header class="module__header"><h3 class="module__title">{{ m.title }}</h3></header>
-                <ul v-if="m.lessons.length" class="lessons">
-                  <li v-for="l in m.lessons" :key="l.id" class="lesson"
-                    @click="$router.push({ name: 'student-lesson-view', params: { courseId: course.id, lessonId: l.id } })">
-                    <ion-icon :icon="playCircleOutline" class="lesson__icon" />
-                    <div class="lesson__body">
-                      <p class="lesson__title">{{ l.title }}</p>
-                      <p v-if="l.video_url" class="lesson__meta">Video lesson</p>
+            <section v-if="tab === 'content'" class="panel">
+              <EmptyState v-if="!modules.length" title="No content yet" message="Lessons will appear here." :icon="albumsOutline" />
+              <div v-else class="modules">
+                <article v-for="m in modules" :key="m.id" class="module">
+                  <header class="module__header"><h3 class="module__title">{{ m.title }}</h3></header>
+                  <ul v-if="m.lessons.length" class="lessons">
+                    <li v-for="l in m.lessons" :key="l.id" class="lesson"
+                      @click="$router.push({ name: 'student-lesson-view', params: { courseId: course.id, lessonId: l.id } })">
+                      <ion-icon :icon="playCircleOutline" class="lesson__icon" />
+                      <div class="lesson__body">
+                        <p class="lesson__title">{{ l.title }}</p>
+                        <p v-if="l.video_url" class="lesson__meta">Video lesson</p>
+                      </div>
+                    </li>
+                  </ul>
+                  <p v-else class="module__empty">No lessons in this module.</p>
+                </article>
+              </div>
+              <div v-if="materials.length" class="materials">
+                <h3>Course Materials</h3>
+                <ul class="materials__list">
+                  <li v-for="mat in materials" :key="mat.id" class="material" @click="openMaterial(mat)">
+                    <ion-icon :icon="documentOutline" />
+                    <div class="material__body">
+                      <p class="material__title">{{ mat.title }}</p>
+                      <p class="material__meta">{{ mat.type }} · {{ formatSize(mat.size) }}</p>
                     </div>
                   </li>
                 </ul>
-                <p v-else class="module__empty">No lessons in this module.</p>
-              </article>
-            </div>
-            <div v-if="materials.length" class="materials">
-              <h3>Course Materials</h3>
-              <ul class="materials__list">
-                <li v-for="mat in materials" :key="mat.id" class="material" @click="openMaterial(mat)">
-                  <ion-icon :icon="documentOutline" />
-                  <div class="material__body">
-                    <p class="material__title">{{ mat.title }}</p>
-                    <p class="material__meta">{{ mat.type }} · {{ formatSize(mat.size) }}</p>
+              </div>
+            </section>
+
+            <section v-if="tab === 'assignments'" class="panel">
+              <EmptyState v-if="!assignments.length" title="No assignments yet" message="Assignments will appear here." :icon="documentTextOutline" />
+              <ul v-else class="assignments">
+                <li v-for="a in assignments" :key="a.id" class="assignment"
+                  @click="$router.push({ name: 'student-assignment-submit', params: { id: a.id } })">
+                  <ion-icon :icon="documentTextOutline" />
+                  <div class="assignment__body">
+                    <p class="assignment__title">{{ a.title }}</p>
+                    <p class="assignment__meta">{{ a.due_at ? `Due ${formatDate(a.due_at)}` : 'No deadline' }} · {{ a.max_score }} pts</p>
                   </div>
                 </li>
               </ul>
-            </div>
-          </section>
+            </section>
 
-          <section v-if="tab === 'assignments'" class="panel">
-            <EmptyState v-if="!assignments.length" title="No assignments yet" message="Assignments will appear here." :icon="documentTextOutline" />
-            <ul v-else class="assignments">
-              <li v-for="a in assignments" :key="a.id" class="assignment"
-                @click="$router.push({ name: 'student-assignment-submit', params: { id: a.id } })">
-                <ion-icon :icon="documentTextOutline" />
-                <div class="assignment__body">
-                  <p class="assignment__title">{{ a.title }}</p>
-                  <p class="assignment__meta">{{ a.due_at ? `Due ${formatDate(a.due_at)}` : 'No deadline' }} · {{ a.max_score }} pts</p>
-                </div>
-              </li>
-            </ul>
-          </section>
+            <section v-if="tab === 'announcements'" class="panel">
+              <EmptyState v-if="!announcements.length" title="No announcements" message="Course announcements will appear here." :icon="megaphoneOutline" />
+              <ul v-else class="announcements">
+                <li v-for="a in announcements" :key="a.id" class="announcement">
+                  <p class="announcement__title">{{ a.title }}</p>
+                  <p class="announcement__content">{{ a.content }}</p>
+                  <p class="announcement__meta">{{ formatDate(a.created_at) }}</p>
+                </li>
+              </ul>
+            </section>
+          </template>
 
-          <section v-if="tab === 'announcements'" class="panel">
-            <EmptyState v-if="!announcements.length" title="No announcements" message="Course announcements will appear here." :icon="megaphoneOutline" />
-            <ul v-else class="announcements">
-              <li v-for="a in announcements" :key="a.id" class="announcement">
-                <p class="announcement__title">{{ a.title }}</p>
-                <p class="announcement__content">{{ a.content }}</p>
-                <p class="announcement__meta">{{ formatDate(a.created_at) }}</p>
-              </li>
-            </ul>
+          <section v-else class="panel">
+            <EmptyState
+              title="Enroll to access this course"
+              message="Lessons, assignments, and materials are available once you enroll."
+              :icon="lockClosedOutline"
+            />
           </section>
         </template>
       </div>
 
-      <ion-modal :is-open="showEnroll" @didDismiss="showEnroll = false">
+      <ion-modal :is-open="showEnroll" @didDismiss="closeEnroll">
         <ion-content class="modal-content"><div class="modal-inner">
           <h2>Enroll in {{ course?.title }}</h2>
-          <input v-model="enrollKey" placeholder="Enrollment key (if required)" class="modal-input" />
+          <input
+            v-model="enrollKey"
+            placeholder="Enrollment key (if required)"
+            class="modal-input"
+            autocomplete="off"
+          />
           <p v-if="enrollError" class="modal-error">{{ enrollError }}</p>
           <div class="modal-actions">
-            <ion-button fill="clear" @click="showEnroll = false">Cancel</ion-button>
-            <ion-button :disabled="enrolling" @click="doEnroll">{{ enrolling ? 'Enrolling…' : 'Enroll' }}</ion-button>
+            <ion-button fill="clear" :disabled="enrolling" @click="closeEnroll">Cancel</ion-button>
+            <ion-button :disabled="enrolling" @click="doEnroll">
+              {{ enrolling ? 'Enrolling…' : 'Enroll' }}
+            </ion-button>
           </div>
         </div></ion-content>
       </ion-modal>
@@ -116,37 +151,46 @@ import { ref, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import {
   IonPage, IonContent, IonRefresher, IonRefresherContent, IonButton, IonIcon,
-  IonSegment, IonSegmentButton, IonLabel, IonModal,
+  IonSegment, IonSegmentButton, IonLabel, IonModal, IonNote,
 } from '@ionic/vue';
 import {
   arrowBackOutline, playCircleOutline, documentOutline,
-  documentTextOutline, megaphoneOutline, albumsOutline,
+  documentTextOutline, megaphoneOutline, albumsOutline, lockClosedOutline,
 } from 'ionicons/icons';
 import LoadingState from '@/components/common/LoadingState.vue';
 import ErrorState from '@/components/common/ErrorState.vue';
 import EmptyState from '@/components/common/EmptyState.vue';
 import { useCourse } from '@/composables/useCourse';
-import { useAuthStore } from '@/stores/authStore';
-import { enrollInCourse } from '@/services/enrollments';
+import { enrollInCourse, withdrawFromCourse } from '@/services/enrollments';
 import { getMaterialDownloadUrl } from '@/services/content';
 import type { Material } from '@/types/app';
 
 const route = useRoute();
-const auth = useAuthStore();
 const courseId = computed(() => (route.params.id as string) || null);
-const { course, modules, materials, assignments, announcements, progress, loading, error, reload } = useCourse(courseId);
+const {
+  course, modules, materials, assignments, announcements,
+  enrollment, progress, loading, error, reload,
+} = useCourse(courseId);
 
 const tab = ref<'content' | 'assignments' | 'announcements'>('content');
 const showEnroll = ref(false);
 const enrollKey = ref('');
 const enrolling = ref(false);
 const enrollError = ref<string | null>(null);
+const withdrawing = ref(false);
 
-const isEnrolled = computed(() => !!auth.user);
+const isEnrolled = computed(() => enrollment.value?.status === 'ACTIVE');
 
 async function onRefresh(ev: CustomEvent) {
   await reload();
   (ev.target as HTMLIonRefresherElement).complete();
+}
+
+function closeEnroll() {
+  if (enrolling.value) return;
+  showEnroll.value = false;
+  enrollKey.value = '';
+  enrollError.value = null;
 }
 
 async function doEnroll() {
@@ -155,11 +199,29 @@ async function doEnroll() {
   enrollError.value = null;
   try {
     await enrollInCourse(courseId.value, enrollKey.value || undefined);
-    showEnroll.value = false;
     await reload();
+    showEnroll.value = false;
+    enrollKey.value = '';
+    tab.value = 'content';
   } catch (e: unknown) {
     enrollError.value = e instanceof Error ? e.message : 'Failed to enroll.';
-  } finally { enrolling.value = false; }
+  } finally {
+    enrolling.value = false;
+  }
+}
+
+async function withdraw() {
+  if (!courseId.value) return;
+  withdrawing.value = true;
+  try {
+    await withdrawFromCourse(courseId.value);
+    await reload();
+  } catch (e: unknown) {
+    // Surface with the same modal error channel? Simpler: alert.
+    alert(e instanceof Error ? e.message : 'Failed to withdraw.');
+  } finally {
+    withdrawing.value = false;
+  }
 }
 
 async function openMaterial(mat: Material) {
@@ -191,6 +253,7 @@ function formatSize(bytes: number | null): string {
 .course-home__code { margin: 0; font-family: var(--plumi-font-mono); font-size: var(--plumi-text-xs); color: var(--plumi-text-subtle); }
 .course-home__title { margin: 4px 0; font-size: var(--plumi-text-2xl); letter-spacing: -0.03em; }
 .course-home__desc { margin: 0 0 var(--size-2, 0.5rem); color: var(--plumi-text-muted); font-size: var(--plumi-text-sm); }
+.course-home__actions { display: flex; gap: var(--size-2, 0.5rem); flex-wrap: wrap; align-items: center; margin-top: var(--size-2, 0.5rem); }
 .course-home__progress { display: flex; align-items: center; gap: var(--size-2, 0.5rem); font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); margin-bottom: var(--size-2, 0.5rem); }
 .progress { flex: 1; height: 8px; background: var(--plumi-surface-muted); border-radius: var(--radius-round); overflow: hidden; }
 .progress__bar { height: 100%; background: var(--plumi-primary); transition: width 300ms ease; }

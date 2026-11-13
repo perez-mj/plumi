@@ -1,27 +1,20 @@
 -- ============================================================
--- 12_profile_trigger: auto-create public.profiles on signup
+-- 19_profile_trigger: auto-create public.profiles on signup,
+--     keep profiles.email in sync, and backfill any missing rows.
 -- ============================================================
 
--- 1. Ensure role names are normalized (lowercase) so the lookup below
---    matches authStore's `role.toLowerCase()` comparison.
---    The seed already inserts 'ADMIN', 'INSTRUCTOR', 'STUDENT' — verify
---    with: SELECT name FROM roles;
---    If they are uppercase, the function below uses UPPER() to find them.
+-- 1. Create profile on new auth user.
 
 CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
 RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
+LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_role_id   uuid;
-  v_first     text;
-  v_last      text;
+  v_role_id uuid;
+  v_first   text;
+  v_last    text;
 BEGIN
-  -- Pick the default role. Falls back to 'STUDENT'; if that role row is
-  -- missing, the trigger raises and the signup fails loudly (better than
-  -- silently creating a profile with no role).
   SELECT id INTO v_role_id FROM public.roles WHERE name = 'STUDENT' LIMIT 1;
   IF v_role_id IS NULL THEN
     SELECT id INTO v_role_id FROM public.roles WHERE name = 'student' LIMIT 1;
@@ -30,7 +23,6 @@ BEGIN
     RAISE EXCEPTION 'Default role STUDENT not found in public.roles';
   END IF;
 
-  -- Read the optional first/last name from signup metadata.
   v_first := NULLIF(TRIM(COALESCE(NEW.raw_user_meta_data->>'first_name', '')), '');
   v_last  := NULLIF(TRIM(COALESCE(NEW.raw_user_meta_data->>'last_name',  '')), '');
 
@@ -50,19 +42,17 @@ BEGIN
 END;
 $$;
 
--- 2. Attach the trigger. Drop first so re-running the migration is safe.
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_new_auth_user();
 
--- 3. Keep public.profiles.email in sync if the auth email changes.
---    (Section 6.1 of the docs says this duplication must stay consistent.)
+-- 2. Keep profiles.email in sync if the auth email changes.
+
 CREATE OR REPLACE FUNCTION public.handle_auth_user_email_change()
 RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
+LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
@@ -82,8 +72,8 @@ CREATE TRIGGER on_auth_user_email_changed
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_auth_user_email_change();
 
--- 4. Backfill: any auth.users rows that already exist without a profile.
---    Safe to run on a fresh project (inserts nothing).
+-- 3. Backfill: any auth.users rows that already exist without a profile.
+
 INSERT INTO public.profiles (id, role_id, email, first_name, last_name)
 SELECT
   u.id,

@@ -1,14 +1,11 @@
--- supabase/migrations/20261108000000_11_gamification_sessions.sql
 -- ============================================================
--- 11_gamification_sessions:
+-- 16_gamification_sessions:
 --   question_session_results, question_session_answers
 -- ============================================================
 -- Design notes
 --  * Gamification is scoped to AI interactive sessions only.
 --    These tables never touch progress, submissions, or grades.
---  * Session results are visible only to the owning user. Instructors
---    may compute aggregates from these rows where enabled, but this
---    migration does not grant cross-user SELECT.
+--  * Session results are visible only to the owning user.
 --  * No UPDATE / DELETE policies: a recorded session is immutable.
 -- ============================================================
 
@@ -41,7 +38,6 @@ CREATE INDEX question_session_answers_session_id_idx
 ALTER TABLE public.question_session_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.question_session_answers ENABLE ROW LEVEL SECURITY;
 
--- Own rows only
 CREATE POLICY question_session_results_own_select ON public.question_session_results
   FOR SELECT TO authenticated
   USING (user_id = auth.uid());

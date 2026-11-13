@@ -1,6 +1,15 @@
 -- supabase/seed.sql
 -- Run automatically by `supabase db reset --linked`, or manually with
 --   `npx supabase db push --include-seed`
+--
+-- Design notes
+--  * This seed is idempotent: safe to run repeatedly.
+--  * Role names are UPPERCASE ('ADMIN'/'INSTRUCTOR'/'STUDENT'); the
+--    01_identity migration also enforces a case-insensitive unique
+--    index so 'student' cannot sneak in as a duplicate.
+--  * system_settings uses DO UPDATE so changed defaults propagate.
+--    If you want to preserve admin overrides, change to DO NOTHING
+--    and run this file only on fresh databases.
 
 -- ============================================================
 -- 1. PERMISSIONS
@@ -46,7 +55,6 @@ ON CONFLICT (name) DO NOTHING;
 
 -- ============================================================
 -- 3. ROLE_PERMISSIONS
---    Mirrors ROLE_PERMISSIONS in the old seed.
 -- ============================================================
 
 -- ADMIN gets everything
@@ -92,6 +100,8 @@ ON CONFLICT DO NOTHING;
 
 -- ============================================================
 -- 4. SYSTEM SETTINGS
+--    DO UPDATE so seed changes propagate on re-run. The
+--    system_settings_set_updated_at trigger owns updated_at.
 -- ============================================================
 INSERT INTO public.system_settings (key, value) VALUES
   ('ai.rate_limit_per_hour',        '20'::jsonb),
@@ -109,15 +119,34 @@ INSERT INTO public.system_settings (key, value) VALUES
   ('meeting.default_duration_min',  '60'::jsonb),
   ('meeting.reminder_minutes',      '30'::jsonb),
   ('platform.name',                 '"Plumi"'::jsonb)
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
 INSERT INTO public.system_settings (key, value) VALUES
   ('gamification.defaults', '{
      "enabled": true,
-     "base_points":      { "EASY": 10, "MEDIUM": 20, "HARD": 30 },
-     "combo_thresholds": { "2": 5, "3": 10 },
-     "combo_cap":        3,
-     "completion_bonus": 5,
+     "base_points":       { "EASY": 10, "MEDIUM": 20, "HARD": 30 },
+     "combo_thresholds":  { "2": 5, "3": 10 },
+     "combo_cap":         3,
+     "completion_bonus":  5,
      "time_bonus_enabled": false
    }'::jsonb)
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+
+
+-- ============================================================
+-- 5. BACKFILL: any auth.users without a profile
+--    (safe no-op on a fresh reset; the seed runs after
+--    19_profile_trigger, which could not backfill because
+--    roles did not exist yet at that point.)
+-- ============================================================
+INSERT INTO public.profiles (id, role_id, email, first_name, last_name)
+SELECT
+  u.id,
+  (SELECT id FROM public.roles WHERE name = 'STUDENT' LIMIT 1),
+  COALESCE(u.email, ''),
+  COALESCE(NULLIF(TRIM(COALESCE(u.raw_user_meta_data->>'first_name','')),''),
+           SPLIT_PART(COALESCE(u.email,''), '@', 1)),
+  COALESCE(NULLIF(TRIM(COALESCE(u.raw_user_meta_data->>'last_name','')),''), '')
+FROM auth.users u
+WHERE NOT EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = u.id)
+  AND EXISTS (SELECT 1 FROM public.roles WHERE name = 'STUDENT');

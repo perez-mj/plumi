@@ -81,13 +81,13 @@ CREATE INDEX ai_requests_material_id_idx        ON public.ai_requests(material_i
 
 CREATE UNIQUE INDEX material_generations_ai_request_id_key
   ON public.material_generations(ai_request_id);
-CREATE INDEX material_generations_created_by_idx ON public.material_generations(created_by);
-CREATE INDEX material_generations_course_id_idx  ON public.material_generations(course_id);
+CREATE INDEX material_generations_created_by_idx  ON public.material_generations(created_by);
+CREATE INDEX material_generations_course_id_idx   ON public.material_generations(course_id);
 CREATE INDEX material_generations_material_id_idx ON public.material_generations(material_id);
 CREATE INDEX material_generations_course_id_is_shared_idx
   ON public.material_generations(course_id, is_shared);
 
-CREATE INDEX flashcards_generation_id_idx ON public.flashcards(generation_id);
+CREATE INDEX flashcards_generation_id_idx          ON public.flashcards(generation_id);
 CREATE INDEX generated_questions_generation_id_idx ON public.generated_questions(generation_id);
 CREATE INDEX flashcard_reviews_user_id_flashcard_id_idx
   ON public.flashcard_reviews(user_id, flashcard_id);
@@ -100,8 +100,8 @@ CREATE TRIGGER material_generations_set_updated_at
 
 -- ---------- RLS ----------
 
-ALTER TABLE public.ai_requests         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_requests          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.material_generations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.flashcards          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.generated_questions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.flashcard_reviews   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.flashcards           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.generated_questions  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.flashcard_reviews    ENABLE ROW LEVEL SECURITY;
