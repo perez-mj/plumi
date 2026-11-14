@@ -101,6 +101,8 @@ import {
 } from 'ionicons/icons';
 import LoadingState from '@/components/common/LoadingState.vue';
 import ErrorState from '@/components/common/ErrorState.vue';
+import { getMyEnrollmentForCourse } from '@/services/enrollments';
+
 import {
   getAssignment,
   getMySubmission,
@@ -139,7 +141,14 @@ async function load() {
   error.value = null;
   loading.value = true;
   try {
-    assignment.value = await getAssignment(assignmentId);
+    const a = await getAssignment(assignmentId);
+    const enr = await getMyEnrollmentForCourse(a.course_id);
+    if (!enr || enr.status !== 'ACTIVE') {
+      throw new Error(
+        `You are not enrolled in ${a.course_id} — this assignment cannot be submitted.`
+      );
+    }
+    assignment.value = a;
     mySubmission.value = await getMySubmission(assignmentId);
     if (mySubmission.value?.content) content.value = mySubmission.value.content;
   } catch (e: unknown) {

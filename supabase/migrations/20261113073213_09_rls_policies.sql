@@ -194,18 +194,13 @@ CREATE POLICY assignments_write ON public.assignments
   USING (created_by = auth.uid() OR public.teaches_course(course_id) OR public.is_admin())
   WITH CHECK (created_by = auth.uid() OR public.teaches_course(course_id) OR public.is_admin());
 
-CREATE POLICY submissions_read ON public.submissions
+CREATE POLICY assignments_read ON public.assignments
   FOR SELECT TO authenticated
   USING (
-    student_id = auth.uid()
-    OR graded_by = auth.uid()
+    created_by = auth.uid()
+    OR public.teaches_course(course_id)
     OR public.is_admin()
-    OR assignment_id IN (
-      SELECT a.id
-      FROM public.assignments a
-      JOIN public.courses c ON c.id = a.course_id
-      WHERE c.instructor_id = auth.uid()
-    )
+    OR (is_published = true AND public.is_enrolled(course_id))
   );
 
 CREATE POLICY submissions_student_insert ON public.submissions
