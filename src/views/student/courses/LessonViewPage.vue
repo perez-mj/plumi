@@ -19,7 +19,11 @@
           <p v-else class="lesson-view__empty">No written content for this lesson.</p>
 
           <div v-if="enrollmentId" class="lesson-view__complete">
-            <ion-button :color="completed ? 'success' : 'primary'" :disabled="marking" @click="toggleComplete">
+            <ion-button
+              :color="completed ? 'success' : 'primary'"
+              :disabled="marking"
+              @click="toggleComplete"
+            >
               <ion-icon slot="start" :icon="completed ? checkmarkDoneOutline : checkmarkOutline" />
               {{ completed ? 'Completed' : 'Mark as complete' }}
             </ion-button>
@@ -38,12 +42,11 @@ import { arrowBackOutline, checkmarkOutline, checkmarkDoneOutline } from 'ionico
 import LoadingState from '@/components/common/LoadingState.vue';
 import ErrorState from '@/components/common/ErrorState.vue';
 import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/stores/authStore';
-import { markLessonProgress, getCourseProgress } from '@/services/progress';
+import { getMyEnrollmentForCourse } from '@/services/enrollments';
+import { getLessonProgress, markLessonProgress } from '@/services/progress';
 import type { Lesson } from '@/types/app';
 
 const route = useRoute();
-const auth = useAuthStore();
 const courseId = route.params.courseId as string;
 const lessonId = route.params.lessonId as string;
 
@@ -56,21 +59,22 @@ const marking = ref(false);
 
 async function load() {
   error.value = null;
+  loading.value = true;
   try {
-    const [lessonRes, enrollRes] = await Promise.all([
+    const [lessonRes, enr, prog] = await Promise.all([
       supabase.from('lessons').select('*').eq('id', lessonId).single(),
-      supabase.from('enrollments').select('id').eq('course_id', courseId).eq('student_id', auth.user!.id).maybeSingle(),
+      getMyEnrollmentForCourse(courseId),
+      getLessonProgress(courseId, lessonId),
     ]);
     if (lessonRes.error) throw lessonRes.error;
     lesson.value = lessonRes.data;
-    enrollmentId.value = enrollRes.data?.id ?? null;
-    if (enrollmentId.value) {
-      const prog = await getCourseProgress(courseId);
-      completed.value = prog.rows.find((r) => r.lesson_id === lessonId)?.status === 'COMPLETED';
-    }
+    enrollmentId.value = enr?.status === 'ACTIVE' ? enr.id : null;
+    completed.value = prog?.status === 'COMPLETED';
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Failed to load.';
-  } finally { loading.value = false; }
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function toggleComplete() {
@@ -78,11 +82,17 @@ async function toggleComplete() {
   marking.value = true;
   try {
     await markLessonProgress({
-      courseId, lessonId, enrollmentId: enrollmentId.value,
+      courseId,
+      lessonId,
+      enrollmentId: enrollmentId.value,
       status: completed.value ? 'IN_PROGRESS' : 'COMPLETED',
     });
     completed.value = !completed.value;
-  } finally { marking.value = false; }
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : 'Failed to update progress.';
+  } finally {
+    marking.value = false;
+  }
 }
 
 onMounted(load);

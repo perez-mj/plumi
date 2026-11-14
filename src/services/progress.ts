@@ -8,7 +8,6 @@ export async function getCourseProgress(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { completed: 0, total: 0, percent: 0, rows: [] };
 
-  // Count published lessons in course
   const { count: totalLessons, error: cErr } = await supabase
     .from('lessons')
     .select('id', { count: 'exact', head: true })
@@ -33,6 +32,25 @@ export async function getCourseProgress(
   };
 }
 
+/** The current student's progress row for one lesson, or null. */
+export async function getLessonProgress(
+  courseId: string,
+  lessonId: string,
+): Promise<Progress | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('progress')
+    .select('*')
+    .eq('course_id', courseId)
+    .eq('lesson_id', lessonId)
+    .eq('student_id', user.id)
+    .maybeSingle();
+  if (error) throw error;
+  return data ?? null;
+}
+
 export async function markLessonProgress(params: {
   courseId: string;
   lessonId: string;
@@ -44,6 +62,8 @@ export async function markLessonProgress(params: {
 
   const completedAt = params.status === 'COMPLETED' ? new Date().toISOString() : null;
 
+  // The unique index is progress_student_id_lesson_id_key on
+  // (student_id, lesson_id) — see 02_courses.sql.
   const { error } = await supabase.from('progress').upsert(
     {
       course_id: params.courseId,
@@ -53,7 +73,7 @@ export async function markLessonProgress(params: {
       status: params.status,
       completed_at: completedAt,
     },
-    { onConflict: 'course_id,lesson_id,student_id' },
+    { onConflict: 'student_id,lesson_id' },
   );
   if (error) throw error;
 }

@@ -86,7 +86,13 @@ export async function deleteAssignment(assignmentId: string): Promise<void> {
 
 /* ---------------- Submissions ---------------- */
 
-export async function getMySubmission(assignmentId: string): Promise<Submission | null> {
+export interface SubmissionWithFiles extends Submission {
+  submission_files: SubmissionFile[];
+}
+
+export async function getMySubmission(
+  assignmentId: string,
+): Promise<SubmissionWithFiles | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
@@ -97,7 +103,7 @@ export async function getMySubmission(assignmentId: string): Promise<Submission 
     .eq('student_id', user.id)
     .maybeSingle();
   if (error) throw error;
-  return (data as unknown as Submission) ?? null;
+  return (data as unknown as SubmissionWithFiles) ?? null;
 }
 
 export async function listSubmissionsForAssignment(assignmentId: string) {
@@ -116,6 +122,41 @@ export async function listSubmissionsForAssignment(assignmentId: string) {
   return data ?? [];
 }
 
+interface SubmitContext {
+  courseId: string;
+  submissionId: string | null; // existing submission id, null if first submit
+  existingFiles: string[];      // storage paths of files to delete on replace
+}
+
+async function loadSubmitContext(
+  assignmentId: string,
+): Promise<{ courseId: string; allowLate: boolean; dueAt: string | null; existing: SubmissionWithFiles | null }> {
+  const { data: assignment, error: aErr } = await supabase
+    .from('assignments')
+    .select('id, course_id, allow_late, due_at')
+    .eq('id', assignmentId)
+    .single();
+  if (aErr) throw aErr;
+
+  const existing = await getMySubmission(assignmentId);
+  return {
+    courseId: assignment.course_id,
+    allowLate: assignment.allow_late,
+    dueAt: assignment.due_at,
+    existing,
+  };
+}
+
+async function deleteStorageObjects(paths: string[]): Promise<void> {
+  if (!paths.length) return;
+  // Best-effort: a failed cleanup must not abort the new submission.
+  const { error } = await supabase.storage.from(SUBMISSIONS_BUCKET).remove(paths);
+  if (error) {
+    // Surface in the console for diagnostics; do not re-throw.
+    console.warn('[submissions] failed to remove stale files', error.message);
+  }
+}
+
 export async function submitAssignment(params: {
   assignmentId: string;
   content?: string | null;
@@ -124,20 +165,23 @@ export async function submitAssignment(params: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  const { data: assignment, error: aErr } = await supabase
-    .from('assignments')
-    .select('id, course_id, allow_late, due_at')
-    .eq('id', params.assignmentId)
-    .single();
-  if (aErr) throw aErr;
+  const { courseId, allowLate, dueAt, existing } = await loadSubmitContext(params.assignmentId);
+
+  // Guard: a graded submission cannot be edited. RLS/trigger would reject
+  // the write anyway, but the message would be cryptic.
+  if (existing?.status === 'GRADED') {
+    throw new Error('This submission has been graded and can no longer be edited.');
+  }
 
   const now = new Date();
-  const isLate = assignment.due_at ? now > new Date(assignment.due_at) : false;
-  if (isLate && !assignment.allow_late) {
+  const isLate = dueAt ? now > new Date(dueAt) : false;
+  if (isLate && !allowLate) {
     throw new Error('The deadline has passed and late submissions are not allowed.');
   }
 
-  // Upsert the submission row
+  const newStatus = isLate ? 'LATE' : 'SUBMITTED';
+
+  // Upsert the submission row first so we have an id for the storage path.
   const { data: submission, error: subErr } = await supabase
     .from('submissions')
     .upsert(
@@ -145,7 +189,7 @@ export async function submitAssignment(params: {
         assignment_id: params.assignmentId,
         student_id: user.id,
         content: params.content ?? null,
-        status: isLate ? 'LATE' : 'SUBMITTED',
+        status: newStatus,
         submitted_at: now.toISOString(),
       },
       { onConflict: 'assignment_id,student_id' },
@@ -154,24 +198,78 @@ export async function submitAssignment(params: {
     .single();
   if (subErr) throw subErr;
 
-  // Upload files
-  if (params.files?.length) {
-    for (const file of params.files) {
-      const storagePath = `${assignment.course_id}/${submission.id}/${crypto.randomUUID()}-${file.name}`;
-      const { error: upErr } = await supabase.storage
-        .from(SUBMISSIONS_BUCKET)
-        .upload(storagePath, file, { contentType: file.type });
-      if (upErr) throw upErr;
+  const uploadedPaths: string[] = [];
+  const insertedFileIds: string[] = [];
+  const replacedPaths = params.files?.length
+    ? (existing?.submission_files ?? []).map((f) => f.storage_path)
+    : [];
 
-      const { error: metaErr } = await supabase.from('submission_files').insert({
-        submission_id: submission.id,
-        filename: file.name,
-        mime_type: file.type,
-        size: file.size,
-        storage_path: storagePath,
-      });
-      if (metaErr) throw metaErr;
+  try {
+    // Replace-on-resubmit: if the student is sending a new set of files,
+    // remove the previous DB rows and storage objects first.
+    if (replacedPaths.length) {
+      const oldFileIds = (existing?.submission_files ?? []).map((f) => f.id);
+      if (oldFileIds.length) {
+        const { error: delErr } = await supabase
+          .from('submission_files')
+          .delete()
+          .in('id', oldFileIds);
+        if (delErr) throw delErr;
+      }
+      await deleteStorageObjects(replacedPaths);
     }
+
+    if (params.files?.length) {
+      for (const file of params.files) {
+        const storagePath =
+          `${courseId}/${submission.id}/${crypto.randomUUID()}-${file.name}`;
+
+        const { error: upErr } = await supabase.storage
+          .from(SUBMISSIONS_BUCKET)
+          .upload(storagePath, file, { 
+            contentType: file.type ,
+            upsert: false,
+          });
+        if (upErr) throw upErr;
+        uploadedPaths.push(storagePath);
+
+        const { data: fileRow, error: metaErr } = await supabase
+          .from('submission_files')
+          .insert({
+            submission_id: submission.id,
+            filename: file.name,
+            mime_type: file.type,
+            size: file.size,
+            storage_path: storagePath,
+          })
+          .select('id')
+          .single();
+        if (metaErr) throw metaErr;
+        insertedFileIds.push(fileRow.id);
+      }
+    }
+  } catch (err) {
+    // Rollback: drop anything we created this attempt, and re-create the
+    // old file rows we removed if we had to swap. Storage removal is
+    // best-effort — the DB is the source of truth for the UI.
+    if (insertedFileIds.length) {
+      await supabase.from('submission_files').delete().in('id', insertedFileIds);
+    }
+    await deleteStorageObjects(uploadedPaths);
+    if (replacedPaths.length) {
+      const oldRows = (existing?.submission_files ?? []).map((f) => ({
+        submission_id: submission.id,
+        filename: f.filename,
+        mime_type: f.mime_type,
+        size: f.size,
+        storage_path: f.storage_path,
+      }));
+      if (oldRows.length) {
+        // Best-effort restore. If this fails, the student can resubmit.
+        await supabase.from('submission_files').insert(oldRows);
+      }
+    }
+    throw err;
   }
 
   return submission;
@@ -204,4 +302,13 @@ export async function getSubmissionFileUrl(storagePath: string): Promise<string>
     .createSignedUrl(storagePath, 60 * 10);
   if (error) throw error;
   return data.signedUrl;
+}
+
+export async function deleteSubmissionFile(fileId: string, storagePath: string): Promise<void> {
+  const { error: dbErr } = await supabase
+    .from('submission_files')
+    .delete()
+    .eq('id', fileId);
+  if (dbErr) throw dbErr;
+  await deleteStorageObjects([storagePath]);
 }

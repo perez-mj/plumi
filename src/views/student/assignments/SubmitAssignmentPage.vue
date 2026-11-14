@@ -14,7 +14,8 @@
           <header>
             <h1 class="submit-asg__title">{{ assignment.title }}</h1>
             <p class="submit-asg__meta">
-              {{ assignment.due_at ? `Due ${formatDate(assignment.due_at)}` : 'No deadline' }} · {{ assignment.max_score }} points
+              {{ assignment.due_at ? `Due ${formatDate(assignment.due_at)}` : 'No deadline' }}
+              · {{ assignment.max_score }} points
             </p>
           </header>
 
@@ -34,14 +35,56 @@
             <p v-if="mySubmission" class="submitted-meta">
               Submitted {{ formatDate(mySubmission.submitted_at) }} · {{ mySubmission.status }}
             </p>
-            <textarea v-model="content" rows="6" placeholder="Write your answer here…" class="textarea" />
-            <input type="file" multiple @change="onFileChange" class="file-input" />
-            <div class="actions">
-              <ion-button :disabled="submitting" @click="submit">
-                {{ submitting ? 'Submitting…' : mySubmission ? 'Resubmit' : 'Submit' }}
-              </ion-button>
-            </div>
-            <p v-if="submitError" class="error">{{ submitError }}</p>
+
+            <ul v-if="mySubmission?.submission_files?.length" class="file-list">
+              <li v-for="f in mySubmission.submission_files" :key="f.id" class="file-row">
+                <ion-icon :icon="documentOutline" />
+                <span class="file-row__name">{{ f.filename }}</span>
+                <span class="file-row__size">{{ formatSize(f.size) }}</span>
+                <ion-button size="small" fill="clear" @click="download(f.storage_path)">
+                  <ion-icon :icon="downloadOutline" />
+                </ion-button>
+                <ion-button
+                  v-if="canEditSubmission"
+                  size="small"
+                  fill="clear"
+                  color="danger"
+                  :disabled="deletingFileId === f.id"
+                  @click="removeFile(f.id, f.storage_path)"
+                >
+                  <ion-icon :icon="trashOutline" />
+                </ion-button>
+              </li>
+            </ul>
+
+            <p v-if="!canEditSubmission" class="locked-note">
+              This submission has been graded and can no longer be edited.
+            </p>
+
+            <template v-if="canEditSubmission">
+              <textarea
+                v-model="content"
+                rows="6"
+                placeholder="Write your answer here…"
+                class="textarea"
+              />
+              <input
+                ref="fileInput"
+                type="file"
+                multiple
+                @change="onFileChange"
+                class="file-input"
+              />
+              <p v-if="files.length" class="files-pending">
+                {{ files.length }} file(s) selected. On submit, previously uploaded files will be replaced.
+              </p>
+              <div class="actions">
+                <ion-button :disabled="submitting" @click="submit">
+                  {{ submitting ? 'Submitting…' : mySubmission ? 'Resubmit' : 'Submit' }}
+                </ion-button>
+              </div>
+              <p v-if="submitError" class="error">{{ submitError }}</p>
+            </template>
           </section>
         </template>
       </div>
@@ -50,26 +93,43 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { IonPage, IonContent, IonButton, IonIcon } from '@ionic/vue';
-import { arrowBackOutline } from 'ionicons/icons';
+import {
+  arrowBackOutline, documentOutline, downloadOutline, trashOutline,
+} from 'ionicons/icons';
 import LoadingState from '@/components/common/LoadingState.vue';
 import ErrorState from '@/components/common/ErrorState.vue';
-import { getAssignment, getMySubmission, submitAssignment } from '@/services/assignments';
-import type { Assignment, Submission } from '@/types/app';
+import {
+  getAssignment,
+  getMySubmission,
+  submitAssignment,
+  deleteSubmissionFile,
+  getSubmissionFileUrl,
+  type SubmissionWithFiles,
+} from '@/services/assignments';
+import type { Assignment } from '@/types/app';
 
 const route = useRoute();
 const assignmentId = route.params.id as string;
 
 const assignment = ref<Assignment | null>(null);
-const mySubmission = ref<Submission | null>(null);
+const mySubmission = ref<SubmissionWithFiles | null>(null);
 const loading = ref(true);
 const error = ref<string | null>(null);
 const content = ref('');
 const files = ref<File[]>([]);
 const submitting = ref(false);
 const submitError = ref<string | null>(null);
+const deletingFileId = ref<string | null>(null);
+const fileInput = ref<HTMLInputElement | null>(null);
+
+const canEditSubmission = computed(() => {
+  const s = mySubmission.value;
+  if (!s) return true;
+  return s.status !== 'GRADED';
+});
 
 function onFileChange(e: Event) {
   files.value = Array.from((e.target as HTMLInputElement).files ?? []);
@@ -77,29 +137,69 @@ function onFileChange(e: Event) {
 
 async function load() {
   error.value = null;
+  loading.value = true;
   try {
     assignment.value = await getAssignment(assignmentId);
     mySubmission.value = await getMySubmission(assignmentId);
     if (mySubmission.value?.content) content.value = mySubmission.value.content;
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Failed to load.';
-  } finally { loading.value = false; }
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function submit() {
   submitting.value = true;
   submitError.value = null;
   try {
-    await submitAssignment({ assignmentId, content: content.value || null, files: files.value });
+    await submitAssignment({
+      assignmentId,
+      content: content.value || null,
+      files: files.value,
+    });
+    files.value = [];
+    if (fileInput.value) fileInput.value.value = '';
     await load();
   } catch (e: unknown) {
     submitError.value = e instanceof Error ? e.message : 'Failed to submit.';
-  } finally { submitting.value = false; }
+  } finally {
+    submitting.value = false;
+  }
+}
+
+async function download(storagePath: string) {
+  try {
+    const url = await getSubmissionFileUrl(storagePath);
+    window.open(url, '_blank');
+  } catch (e: unknown) {
+    submitError.value = e instanceof Error ? e.message : 'Failed to open file.';
+  }
+}
+
+async function removeFile(id: string, storagePath: string) {
+  if (!canEditSubmission.value) return;
+  deletingFileId.value = id;
+  try {
+    await deleteSubmissionFile(id, storagePath);
+    await load();
+  } catch (e: unknown) {
+    submitError.value = e instanceof Error ? e.message : 'Failed to delete file.';
+  } finally {
+    deletingFileId.value = null;
+  }
 }
 
 function formatDate(iso: string | null) {
   if (!iso) return '';
   return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function formatSize(bytes: number | null): string {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 onMounted(load);
@@ -115,8 +215,14 @@ onMounted(load);
 .grade { font-size: var(--plumi-text-xl); font-weight: var(--plumi-weight-bold); color: var(--plumi-success); margin: 0 0 var(--size-2, 0.5rem); }
 .feedback { padding: var(--size-2, 0.5rem); background: var(--plumi-success-soft); border-radius: var(--plumi-radius-sm); margin: 0; }
 .submitted-meta { margin: 0 0 var(--size-2, 0.5rem); font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
+.file-list { list-style: none; padding: 0; margin: 0 0 var(--size-2, 0.5rem); display: flex; flex-direction: column; gap: 4px; }
+.file-row { display: flex; align-items: center; gap: var(--size-2, 0.5rem); padding: var(--size-1, 0.25rem) var(--size-2, 0.5rem); border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-sm); }
+.file-row__name { flex: 1; font-size: var(--plumi-text-sm); min-width: 0; overflow-wrap: anywhere; }
+.file-row__size { font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
+.locked-note { font-size: var(--plumi-text-sm); color: var(--plumi-text-muted); margin: var(--size-2, 0.5rem) 0 0; }
 .textarea { width: 100%; padding: var(--size-2, 0.5rem); border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-md); background: var(--plumi-surface); color: var(--plumi-ink); font: inherit; }
 .file-input { display: block; margin: var(--size-2, 0.5rem) 0; }
+.files-pending { margin: 0 0 var(--size-2, 0.5rem); font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
 .actions { display: flex; justify-content: flex-end; }
 .error { color: var(--plumi-danger); font-size: var(--plumi-text-sm); margin: var(--size-2, 0.5rem) 0 0; }
 

@@ -15,9 +15,17 @@
         <ErrorState v-else-if="error" :message="error" @retry="load" />
 
         <template v-else-if="assignment">
-          <PageHeader :title="assignment.title" :subtitle="`${submissions.length} submissions · ${assignment.max_score} pts`" />
+          <PageHeader
+            :title="assignment.title"
+            :subtitle="`${submissions.length} submissions · ${assignment.max_score} pts`"
+          />
 
-          <EmptyState v-if="!submissions.length" title="No submissions" message="Students haven't submitted anything yet." :icon="documentTextOutline" />
+          <EmptyState
+            v-if="!submissions.length"
+            title="No submissions"
+            message="Students haven't submitted anything yet."
+            :icon="documentTextOutline"
+          />
           <ul v-else class="sub-list">
             <li v-for="s in submissions" :key="s.id" class="sub-card">
               <header class="sub-card__head">
@@ -27,7 +35,25 @@
                 </div>
                 <span class="sub-card__status" :class="`status--${s.status.toLowerCase()}`">{{ s.status }}</span>
               </header>
+
               <p v-if="s.content" class="sub-card__content">{{ s.content }}</p>
+
+              <ul v-if="s.submission_files.length" class="sub-card__files">
+                <li v-for="f in s.submission_files" :key="f.id" class="sub-card__file">
+                  <ion-icon :icon="documentOutline" />
+                  <span class="sub-card__file-name">{{ f.filename }}</span>
+                  <span class="sub-card__file-size">{{ formatSize(f.size) }}</span>
+                  <ion-button
+                    size="small"
+                    fill="clear"
+                    :disabled="openingFileId === f.id"
+                    @click="download(f.id, f.storage_path)"
+                  >
+                    <ion-icon :icon="downloadOutline" />
+                  </ion-button>
+                </li>
+              </ul>
+
               <div v-if="s.score != null" class="sub-card__grade">
                 <strong>Score:</strong> {{ s.score }} / {{ assignment.max_score }}
                 <span v-if="s.feedback">— {{ s.feedback }}</span>
@@ -60,18 +86,32 @@ import { useRoute } from 'vue-router';
 import {
   IonPage, IonContent, IonRefresher, IonRefresherContent, IonButton, IonIcon,
 } from '@ionic/vue';
-import { arrowBackOutline, documentTextOutline } from 'ionicons/icons';
+import {
+  arrowBackOutline, documentTextOutline, documentOutline, downloadOutline,
+} from 'ionicons/icons';
 import PageHeader from '@/components/common/PageHeader.vue';
 import LoadingState from '@/components/common/LoadingState.vue';
 import ErrorState from '@/components/common/ErrorState.vue';
 import EmptyState from '@/components/common/EmptyState.vue';
 import { getCourse } from '@/services/courses';
-import { getAssignment, listSubmissionsForAssignment, gradeSubmission } from '@/services/assignments';
+import {
+  getAssignment,
+  listSubmissionsForAssignment,
+  gradeSubmission,
+  getSubmissionFileUrl,
+} from '@/services/assignments';
 import { useAuthStore } from '@/stores/authStore';
-import type { Assignment, Submission } from '@/types/app';
+import type { Assignment, Submission, SubmissionFile } from '@/types/app';
 
 interface SubWithStudent extends Submission {
-  student: { id: string; first_name: string; last_name: string; email: string; avatar_url: string | null };
+  submission_files: SubmissionFile[];
+  student: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    avatar_url: string | null;
+  };
 }
 
 const route = useRoute();
@@ -85,6 +125,7 @@ const error = ref<string | null>(null);
 const drafts = reactive<Record<string, { score: number | null; feedback: string }>>({});
 const grading = reactive<Record<string, boolean>>({});
 const gradeErrors = reactive<Record<string, string | null>>({});
+const openingFileId = ref<string | null>(null);
 
 async function load() {
   error.value = null;
@@ -94,7 +135,6 @@ async function load() {
       listSubmissionsForAssignment(assignmentId),
     ]);
 
-    // Verify this instructor owns the course the assignment belongs to.
     if (auth.user) {
       const course = await getCourse(a.course_id);
       if (course.instructor_id !== auth.user.id) {
@@ -103,9 +143,9 @@ async function load() {
     }
 
     assignment.value = a;
-    submissions.value = subs as SubWithStudent[];
+    submissions.value = (subs ?? []) as SubWithStudent[];
 
-    for (const s of subs as SubWithStudent[]) {
+    for (const s of submissions.value) {
       drafts[s.id] = { score: s.score, feedback: s.feedback ?? '' };
       grading[s.id] = false;
       gradeErrors[s.id] = null;
@@ -137,6 +177,25 @@ async function grade(id: string) {
   }
 }
 
+async function download(id: string, storagePath: string) {
+  openingFileId.value = id;
+  try {
+    const url = await getSubmissionFileUrl(storagePath);
+    window.open(url, '_blank');
+  } catch (e: unknown) {
+    alert(e instanceof Error ? e.message : 'Failed to open file.');
+  } finally {
+    openingFileId.value = null;
+  }
+}
+
+function formatSize(bytes: number | null): string {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
 onMounted(load);
 </script>
 
@@ -150,6 +209,10 @@ onMounted(load);
 .sub-card__status.status--graded, .sub-card__status.status--returned { background: var(--plumi-success-soft); color: var(--plumi-success); }
 .sub-card__status.status--late { background: var(--plumi-warning-soft); color: var(--plumi-warning); }
 .sub-card__content { padding: var(--size-2, 0.5rem); background: var(--plumi-surface-muted); border-radius: var(--plumi-radius-sm); margin: 0 0 var(--size-2, 0.5rem); font-size: var(--plumi-text-sm); white-space: pre-line; }
+.sub-card__files { list-style: none; padding: 0; margin: 0 0 var(--size-2, 0.5rem); display: flex; flex-direction: column; gap: 4px; }
+.sub-card__file { display: flex; align-items: center; gap: var(--size-2, 0.5rem); padding: var(--size-1, 0.25rem) var(--size-2, 0.5rem); border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-sm); }
+.sub-card__file-name { flex: 1; font-size: var(--plumi-text-sm); min-width: 0; overflow-wrap: anywhere; }
+.sub-card__file-size { font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
 .sub-card__grade { font-size: var(--plumi-text-sm); color: var(--plumi-success); }
 .sub-card__form { display: flex; gap: var(--size-2, 0.5rem); flex-wrap: wrap; align-items: center; }
 .sub-card__form input { padding: var(--size-1, 0.25rem) var(--size-2, 0.5rem); border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-sm); background: var(--plumi-surface); color: var(--plumi-ink); font: inherit; }

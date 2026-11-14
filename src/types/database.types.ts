@@ -1551,6 +1551,17 @@ export type Database = {
         Returns: boolean
       }
       is_enrolled: { Args: { p_course_id: string }; Returns: boolean }
+      messaging_open_course: { Args: { p_course: string }; Returns: string }
+      messaging_open_direct: { Args: { p_other: string }; Returns: string }
+      messaging_people: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          first_name: string
+          id: string
+          last_name: string
+        }[]
+      }
       notify_user: {
         Args: {
           p_actor_id: string

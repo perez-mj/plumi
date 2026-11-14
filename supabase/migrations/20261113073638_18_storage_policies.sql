@@ -98,3 +98,25 @@ USING (
   bucket_id = 'assignment-submissions'
   AND (public.is_admin() OR owner = auth.uid())
 );
+
+-- Allow students to replace their own submission files (required for upsert)
+CREATE POLICY submission_files_update
+ON storage.objects
+FOR UPDATE
+TO authenticated
+USING (
+  bucket_id = 'assignment-submissions'
+  AND (
+    public.is_admin()
+    OR public.teaches_course( (storage.foldername(name))[1]::uuid )
+    OR owner = auth.uid()
+  )
+)
+WITH CHECK (
+  bucket_id = 'assignment-submissions'
+  AND (
+    public.is_admin()
+    OR public.teaches_course( (storage.foldername(name))[1]::uuid )
+    OR owner = auth.uid()
+  )
+);

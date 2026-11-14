@@ -49,9 +49,10 @@ export async function enrollInCourse(
   courseId: string,
   enrollmentKey?: string,
 ): Promise<Enrollment> {
+  const key = enrollmentKey?.trim() || undefined;
   const { data, error } = await supabase.rpc('enroll_in_course', {
     p_course_id: courseId,
-    p_enrollment_key: enrollmentKey?.trim() || null,
+    p_enrollment_key: key,
   });
 
   if (error) {

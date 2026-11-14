@@ -149,6 +149,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useRoute } from 'vue-router';
+import { onIonViewWillEnter } from '@ionic/vue';
 import {
   IonPage, IonContent, IonRefresher, IonRefresherContent, IonButton, IonIcon,
   IonSegment, IonSegmentButton, IonLabel, IonModal, IonNote,
@@ -180,6 +181,10 @@ const enrollError = ref<string | null>(null);
 const withdrawing = ref(false);
 
 const isEnrolled = computed(() => enrollment.value?.status === 'ACTIVE');
+
+// Refetch whenever the page becomes active. Covers the "student just
+// marked a lesson complete and hit Back" case, plus stale assignment lists.
+onIonViewWillEnter(() => { reload(); });
 
 async function onRefresh(ev: CustomEvent) {
   await reload();
@@ -217,7 +222,6 @@ async function withdraw() {
     await withdrawFromCourse(courseId.value);
     await reload();
   } catch (e: unknown) {
-    // Surface with the same modal error channel? Simpler: alert.
     alert(e instanceof Error ? e.message : 'Failed to withdraw.');
   } finally {
     withdrawing.value = false;

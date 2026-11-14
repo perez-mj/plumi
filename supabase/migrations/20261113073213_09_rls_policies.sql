@@ -240,24 +240,46 @@ CREATE POLICY submissions_grader_update ON public.submissions
   )
   WITH CHECK (true);
 
+-- Students can read their own submission files.
+-- Course instructors can read submission files for any assignment
+-- in their course, regardless of whether grading has occurred.
+-- Admins can read everything.
 CREATE POLICY submission_files_read ON public.submission_files
   FOR SELECT TO authenticated
   USING (
-    submission_id IN (
-      SELECT s.id FROM public.submissions s
-      WHERE s.student_id = auth.uid() OR s.graded_by = auth.uid()
+    public.is_admin()
+    OR submission_id IN (
+      SELECT s.id
+      FROM public.submissions s
+      JOIN public.assignments a ON a.id = s.assignment_id
+      WHERE s.student_id = auth.uid()
+         OR public.teaches_course(a.course_id)
     )
-    OR public.is_admin()
   );
 
 CREATE POLICY submission_files_student_insert ON public.submission_files
   FOR INSERT TO authenticated
   WITH CHECK (
     submission_id IN (
-      SELECT s.id FROM public.submissions s WHERE s.student_id = auth.uid()
+      SELECT s.id FROM public.submissions s
+      WHERE s.student_id = auth.uid()
+        AND s.status IN ('SUBMITTED', 'LATE', 'RETURNED')
     )
   );
 
+-- Students may delete their own submission files while the parent
+-- submission is still editable. Once graded, the rows are frozen.
+CREATE POLICY submission_files_student_delete ON public.submission_files
+  FOR DELETE TO authenticated
+  USING (
+    submission_id IN (
+      SELECT s.id FROM public.submissions s
+      WHERE s.student_id = auth.uid()
+        AND s.status IN ('SUBMITTED', 'LATE', 'RETURNED')
+    )
+  );
+
+  
 -- ============================================================
 -- 04 — AI learning resources
 -- ============================================================
