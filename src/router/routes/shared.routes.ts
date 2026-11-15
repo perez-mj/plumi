@@ -18,6 +18,13 @@ export const sharedRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/shared/meetings/MeetingRoomPage.vue'),
   },
   {
+    path: 'meetings/:id/attendance',
+    name: 'meeting-attendance',
+    component: () =>
+      import('@/views/instructor/meetings/MeetingAttendancePage.vue'),
+    meta: { roles: ['instructor', 'admin'] },
+  },
+  {
     path: 'profile',
     name: 'profile',
     component: () => import('@/views/shared/profile/ProfilePage.vue'),

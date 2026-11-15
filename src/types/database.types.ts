@@ -1551,6 +1551,19 @@ export type Database = {
         Returns: boolean
       }
       is_enrolled: { Args: { p_course_id: string }; Returns: boolean }
+      meeting_attendance_list: {
+        Args: { p_meeting_id: string }
+        Returns: {
+          duration_sec: number
+          first_name: string
+          joined_at: string
+          last_name: string
+          left_at: string
+          user_id: string
+        }[]
+      }
+      meeting_end: { Args: { p_meeting_id: string }; Returns: undefined }
+      meeting_start: { Args: { p_meeting_id: string }; Returns: undefined }
       messaging_open_course: { Args: { p_course: string }; Returns: string }
       messaging_open_direct: { Args: { p_other: string }; Returns: string }
       messaging_people: {
