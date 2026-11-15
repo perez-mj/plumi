@@ -122,8 +122,21 @@
                 <ion-icon :icon="documentOutline" />
                 <div class="material__body">
                   <p class="material__title">{{ mat.title }}</p>
-                  <p class="material__meta">{{ mat.type }} · {{ formatSize(mat.size) }}</p>
+                  <p class="material__meta">
+                    {{ mat.type }}<template v-if="mat.size"> · {{ formatSize(mat.size) }}</template>
+                    <span class="material__extraction" :class="extractionClass(mat)">{{ extractionLabel(mat) }}</span>
+                  </p>
                 </div>
+                <ion-button
+                  v-if="isMaterialExtractable(mat.type) && !mat.extracted_text && !extractingId"
+                  size="small"
+                  fill="clear"
+                  title="Extract text for AI"
+                  @click="retryExtraction(mat.id)"
+                >
+                  <ion-icon :icon="sparklesOutline" />
+                </ion-button>
+                <ion-spinner v-else-if="extractingId === mat.id" name="dots" />
                 <ion-button size="small" fill="clear" color="danger" @click="deleteMat(mat.id)">
                   <ion-icon :icon="trashOutline" />
                 </ion-button>
@@ -131,6 +144,18 @@
             </ul>
           </section>
         </template>
+      </div>
+
+      <!-- Inline toast stack -->
+      <div v-if="toasts.length" class="toast-stack" role="status" aria-live="polite">
+        <div
+          v-for="t in toasts"
+          :key="t.id"
+          class="toast"
+          :class="`toast--${t.kind}`"
+        >
+          {{ t.message }}
+        </div>
       </div>
 
       <!-- Add Module Modal -->
@@ -180,11 +205,12 @@
 import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
-  IonPage, IonContent, IonRefresher, IonRefresherContent, IonButton, IonIcon, IonModal,
+  IonPage, IonContent, IonRefresher, IonRefresherContent, IonButton, IonIcon, IonModal, IonSpinner,
 } from '@ionic/vue';
 import {
   arrowBackOutline, addOutline, playCircleOutline, documentOutline,
-  documentTextOutline, trashOutline, cloudUploadOutline, albumsOutline, chatbubblesOutline,
+  documentTextOutline, trashOutline, cloudUploadOutline, albumsOutline,
+  chatbubblesOutline, sparklesOutline,
 } from 'ionicons/icons';
 import LoadingState from '@/components/common/LoadingState.vue';
 import ErrorState from '@/components/common/ErrorState.vue';
@@ -193,9 +219,10 @@ import { useCourse } from '@/composables/useCourse';
 import {
   createModule, deleteModule, createLesson, deleteLesson,
   uploadMaterial, deleteMaterial,
+  extractMaterialText, isMaterialExtractable,
 } from '@/services/content';
 import { openCourseConversation } from '@/services/messaging';
-import type { MaterialType } from '@/types/app';
+import type { Material, MaterialType } from '@/types/app';
 
 const route = useRoute();
 const router = useRouter();
@@ -206,6 +233,20 @@ const {
 } = useCourse(courseId);
 
 const totalLessons = computed(() => modules.value.reduce((n, m) => n + m.lessons.length, 0));
+
+/* ------------------ Toast (page-scoped) ------------------ */
+type ToastKind = 'info' | 'success' | 'warn' | 'error';
+interface Toast { id: number; kind: ToastKind; message: string; }
+const toasts = ref<Toast[]>([]);
+let toastSeq = 0;
+
+function toast(message: string, kind: ToastKind = 'info', ms = 4200) {
+  const id = ++toastSeq;
+  toasts.value = [...toasts.value, { id, kind, message }];
+  window.setTimeout(() => {
+    toasts.value = toasts.value.filter((t) => t.id !== id);
+  }, ms);
+}
 
 /* ------------------ Course chat ------------------ */
 const openingChat = ref(false);
@@ -301,6 +342,7 @@ const showUploadModal = ref(false);
 const uploadTitle = ref('');
 const uploadFile = ref<File | null>(null);
 const uploading = ref(false);
+const extractingId = ref<string | null>(null);
 
 function onFileChange(e: Event) {
   const f = (e.target as HTMLInputElement).files?.[0];
@@ -328,17 +370,94 @@ function inferMaterialType(file: File): MaterialType {
 async function doUpload() {
   if (!courseId.value || !uploadFile.value || !uploadTitle.value.trim()) return;
   uploading.value = true;
+  const file = uploadFile.value;
+  const inferredType = inferMaterialType(file);
   try {
-    await uploadMaterial({
+    const created = await uploadMaterial({
       courseId: courseId.value,
       title: uploadTitle.value.trim(),
-      file: uploadFile.value,
-      type: inferMaterialType(uploadFile.value),
+      file,
+      type: inferredType,
     });
     showUploadModal.value = false;
     uploadTitle.value = ''; uploadFile.value = null;
+
+    if (!isMaterialExtractable(inferredType)) {
+      toast(
+        `${inferredType} uploaded. This format can't be text-extracted, so it won't appear in AI study tools.`,
+        'warn',
+        6000,
+      );
+    } else {
+      toast('Uploaded. Extracting text for AI…', 'info');
+      void waitForExtraction(created.id);
+    }
+
     await reload();
-  } finally { uploading.value = false; }
+  } catch (e: unknown) {
+    toast(e instanceof Error ? e.message : 'Upload failed.', 'error', 6000);
+  } finally {
+    uploading.value = false;
+  }
+}
+
+/**
+ * After upload, the extraction function kicks off in the background
+ * (see extractMaterialTextSafe inside uploadMaterial). Poll the material
+ * row for up to ~20s so the badge flips from "Processing" to "Text ready".
+ */
+async function waitForExtraction(materialId: string) {
+  const deadline = Date.now() + 20_000;
+  // Reload incrementally so the user sees the material immediately.
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 1500));
+    await reload();
+    const m = materials.value.find((x) => x.id === materialId);
+    if (!m) return;
+    if (m.extracted_text) {
+      toast('Text extracted. This material is now available for AI study tools.', 'success');
+      return;
+    }
+  }
+  toast('Text extraction is taking longer than expected. You can retry from the materials list.', 'warn', 6000);
+}
+
+async function retryExtraction(materialId: string) {
+  extractingId.value = materialId;
+  try {
+    const result = await extractMaterialText(materialId, { force: true });
+    if ('skipped' in result && result.skipped) {
+      const reason = result.reason;
+      if (reason === 'unsupported_type') {
+        toast('This format cannot be text-extracted.', 'warn');
+      } else if (reason === 'empty_or_too_short') {
+        toast('Extraction returned too little text to be useful.', 'warn');
+      } else {
+        toast(`Extraction skipped (${reason}).`, 'info');
+      }
+    } else {
+      toast('Text extracted.', 'success');
+    }
+    await reload();
+  } catch (e: unknown) {
+    toast(e instanceof Error ? e.message : 'Extraction failed.', 'error', 6000);
+  } finally {
+    extractingId.value = null;
+  }
+}
+
+function extractionLabel(m: Material): string {
+  if (!isMaterialExtractable(m.type)) return 'Not extractable';
+  if (m.extracted_text && m.extracted_text.length > 0) {
+    return `Text ready · ${m.extracted_text.length.toLocaleString()} chars`;
+  }
+  return 'Processing…';
+}
+
+function extractionClass(m: Material): string {
+  if (!isMaterialExtractable(m.type)) return 'is-na';
+  if (m.extracted_text && m.extracted_text.length > 0) return 'is-ready';
+  return 'is-pending';
 }
 
 async function deleteMat(id: string) {
@@ -388,6 +507,10 @@ function formatDate(iso: string | null) {
 .material__body, .assignment__body { flex: 1; }
 .material__title, .assignment__title { margin: 0; font-size: var(--plumi-text-sm); }
 .material__meta, .assignment__meta { margin: 0; font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
+.material__extraction { margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 0.7em; letter-spacing: 0.04em; }
+.material__extraction.is-ready    { background: var(--plumi-success-soft, #e8f7ee); color: var(--plumi-success, #1a7f48); }
+.material__extraction.is-pending  { background: var(--plumi-warning-soft, #fff4d6); color: var(--plumi-warning, #8a6200); }
+.material__extraction.is-na       { background: var(--plumi-surface-muted, #f1f2f4); color: var(--plumi-text-muted, #666); }
 .modal-content { --background: var(--plumi-surface); }
 .modal-inner { padding: var(--size-5, 1.25rem); max-width: 520px; margin-inline: auto; display: flex; flex-direction: column; gap: var(--size-3, 0.75rem); }
 .modal-inner h2 { margin: 0; }
@@ -403,4 +526,32 @@ function formatDate(iso: string | null) {
 .module__header { gap:12px; flex-wrap:wrap; }
 .lesson, .material, .assignment { flex-wrap:wrap; }
 .lesson__body, .material__body, .assignment__body { min-width:120px; }
+
+/* Inline toast */
+.toast-stack {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  left: 16px;
+  max-width: 480px;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 9000;
+  pointer-events: none;
+}
+.toast {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: var(--plumi-text-sm);
+  box-shadow: var(--plumi-shadow-card, 0 4px 16px rgba(0,0,0,0.08));
+  background: var(--plumi-surface, #fff);
+  color: var(--plumi-ink, #111);
+  border: 1px solid var(--plumi-border, #e5e7eb);
+  pointer-events: auto;
+}
+.toast--success { border-color: var(--plumi-success, #1a7f48); }
+.toast--warn    { border-color: var(--plumi-warning, #8a6200); }
+.toast--error   { border-color: var(--plumi-danger, #b00020); }
 </style>

@@ -142,6 +142,13 @@ export async function uploadMaterial(params: {
     await supabase.storage.from(MATERIAL_BUCKET).remove([storagePath]);
     throw error;
   }
+  if (isMaterialExtractable(params.type)) {
+    // Kick off extraction in the background. Do not await — the caller
+    // (an instructor uploading a file) should not be blocked on Gemini-adjacent
+    // processing.
+    void extractMaterialTextSafe(data.id);
+  }
+
   return data;
 }
 
@@ -171,6 +178,8 @@ export async function addExternalMaterial(params: {
     .select('*')
     .single();
   if (error) throw error;
+  // LINK and YOUTUBE are not server-side extractable; skip.
+  // (If a URL-to-text service is added later, this is where it goes.)
   return data;
 }
 
@@ -188,4 +197,43 @@ export async function deleteMaterial(materialId: string): Promise<void> {
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', materialId);
   if (error) throw error;
+}
+
+
+/* ---------------- Text extraction ---------------- */
+
+export type ExtractionResult =
+  | { materialId: string; skipped: false; charCount: number; type: MaterialType }
+  | { materialId: string; skipped: true; reason: 'already_extracted'; charCount: number }
+  | { materialId: string; skipped: true; reason: 'unsupported_type'; type: MaterialType }
+  | { materialId: string; skipped: true; reason: 'empty_or_too_short'; charCount: number }
+  | { materialId: string; skipped: true; reason: 'unknown_type' };
+
+export async function extractMaterialText(
+  materialId: string,
+  options: { force?: boolean } = {},
+): Promise<ExtractionResult> {
+  const { data, error } = await supabase.functions.invoke('extract-text', {
+    body: { materialId, force: options.force === true },
+  });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data as ExtractionResult;
+}
+
+/**
+ * Fire-and-forget extraction right after a successful upload.
+ * Never throws — upload must not fail because extraction is unavailable.
+ */
+export async function extractMaterialTextSafe(materialId: string): Promise<void> {
+  try {
+    await extractMaterialText(materialId);
+  } catch (e) {
+    // Log to console; caller decides whether to surface to the user.
+    console.warn('[extract-text] failed for', materialId, e);
+  }
+}
+
+export function isMaterialExtractable(type: MaterialType): boolean {
+  return type === 'PDF' || type === 'DOCX' || type === 'PPTX' || type === 'TEXT';
 }

@@ -67,4 +67,17 @@ export const studentRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/student/ai/GamifiedSessionPage.vue'),
     meta: { requiresRole: 'student' },
   },
+
+{
+  path: 'student/ai/generations/:generationId',
+  name: 'student-ai-generation',
+  component: () => import('@/views/student/ai/AiGenerationViewerPage.vue'),
+  meta: { requiresRole: 'student' },
+},
+{
+  path: 'student/ai/flashcards/:generationId',
+  name: 'student-ai-flashcards',
+  component: () => import('@/views/student/ai/FlashcardReviewPage.vue'),
+  meta: { requiresRole: 'student' },
+},
 ];

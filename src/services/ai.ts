@@ -12,6 +12,33 @@ import type {
   SessionDraftAnswer,
 } from '@/types/app';
 
+export type ResourceType = 'SUMMARY' | 'REVIEWER' | 'FLASHCARDS' | 'QUESTIONS' | 'STUDY_GUIDE';
+
+export interface GenerateResourceParams {
+  type: ResourceType;
+  materialId: string;
+  detailLevel?: 'SHORT' | 'STANDARD' | 'COMPREHENSIVE';
+  options?: Record<string, unknown>;
+}
+
+export interface GenerateResourceResult {
+  generationId: string;
+  type: ResourceType;
+  count?: number;
+}
+
+export async function generateResource(
+  params: GenerateResourceParams,
+): Promise<GenerateResourceResult> {
+  const { data, error } = await supabase.functions.invoke('generate-resource', {
+    body: params,
+  });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  if (!data?.generationId) throw new Error('Generation failed');
+  return data as GenerateResourceResult;
+}
+
 /* ---------------- Materials eligible for AI ---------------- */
 
 export async function listGeneratableMaterials(courseId: string): Promise<Material[]> {
@@ -34,15 +61,51 @@ export interface GenerateQuestionsParams {
   detailLevel?: 'SHORT' | 'STANDARD' | 'COMPREHENSIVE';
 }
 
-export async function generateQuestions(
-  params: GenerateQuestionsParams,
-): Promise<{ generationId: string; questionCount: number }> {
-  const { data, error } = await supabase.functions.invoke('generate-questions', {
-    body: params,
+export function generateQuestions(params: {
+  materialId: string;
+  questionCount?: number;
+  detailLevel?: 'SHORT' | 'STANDARD' | 'COMPREHENSIVE';
+}): Promise<GenerateResourceResult> {
+  return generateResource({
+    type: 'QUESTIONS',
+    materialId: params.materialId,
+    detailLevel: params.detailLevel,
+    options: { question_count: params.questionCount ?? 10 },
   });
-  if (error) throw error;
-  if (!data?.generationId) throw new Error(data?.error ?? 'Generation failed');
-  return data;
+}
+
+export function generateFlashcards(params: {
+  materialId: string;
+  cardCount?: number;
+  detailLevel?: 'SHORT' | 'STANDARD' | 'COMPREHENSIVE';
+}): Promise<GenerateResourceResult> {
+  return generateResource({
+    type: 'FLASHCARDS',
+    materialId: params.materialId,
+    detailLevel: params.detailLevel,
+    options: { card_count: params.cardCount ?? 15 },
+  });
+}
+
+export function generateSummary(params: {
+  materialId: string;
+  detailLevel?: 'SHORT' | 'STANDARD' | 'COMPREHENSIVE';
+}): Promise<GenerateResourceResult> {
+  return generateResource({ type: 'SUMMARY', ...params });
+}
+
+export function generateReviewer(params: {
+  materialId: string;
+  detailLevel?: 'SHORT' | 'STANDARD' | 'COMPREHENSIVE';
+}): Promise<GenerateResourceResult> {
+  return generateResource({ type: 'REVIEWER', ...params });
+}
+
+export function generateStudyGuide(params: {
+  materialId: string;
+  detailLevel?: 'SHORT' | 'STANDARD' | 'COMPREHENSIVE';
+}): Promise<GenerateResourceResult> {
+  return generateResource({ type: 'STUDY_GUIDE', ...params });
 }
 
 export async function listMyGenerations(courseId?: string): Promise<MaterialGeneration[]> {
@@ -119,6 +182,58 @@ function parseChoices(raw: unknown): { options: string[]; difficulty: Difficulty
     return { options: raw.map(String), difficulty: 'MEDIUM' };
   }
   return { options: [], difficulty: 'MEDIUM' };
+}
+
+/* ---------------- Flashcards ---------------- */
+
+export interface Flashcard {
+  id: string;
+  question: string;   // front
+  answer: string;     // back
+  position: number;
+}
+
+export interface FlashcardReview {
+  id: string;
+  flashcard_id: string;
+  user_id: string;
+  known: boolean;
+  reviewed_at: string;
+}
+
+export async function listGenerationFlashcards(generationId: string): Promise<Flashcard[]> {
+  const { data, error } = await supabase
+    .from('flashcards')
+    .select('*')
+    .eq('generation_id', generationId)
+    .order('position', { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function reviewFlashcard(flashcardId: string, known: boolean): Promise<FlashcardReview> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  const { data, error } = await supabase
+    .from('flashcard_reviews')
+    .insert({ flashcard_id: flashcardId, user_id: user.id, known })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function listFlashcardReviewsForGeneration(
+  generationId: string,
+): Promise<FlashcardReview[]> {
+  const { data, error } = await supabase
+    .from('flashcard_reviews')
+    .select('*, flashcards!inner(generation_id)')
+    .eq('flashcards.generation_id', generationId)
+    .order('reviewed_at', { ascending: false });
+  if (error) throw error;
+  // Cast away the join shape — caller only needs the review fields.
+  return (data ?? []) as unknown as FlashcardReview[];
 }
 
 /* ---------------- Gamification settings ---------------- */

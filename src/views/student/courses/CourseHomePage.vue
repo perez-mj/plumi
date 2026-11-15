@@ -54,6 +54,7 @@
               <ion-segment-button value="content"><ion-label>Content</ion-label></ion-segment-button>
               <ion-segment-button value="assignments"><ion-label>Assignments</ion-label></ion-segment-button>
               <ion-segment-button value="announcements"><ion-label>Announcements</ion-label></ion-segment-button>
+              <ion-segment-button value="ai"><ion-label>AI Tools</ion-label></ion-segment-button>
             </ion-segment>
 
             <section v-if="tab === 'content'" class="panel">
@@ -112,6 +113,29 @@
                 </li>
               </ul>
             </section>
+
+            <section v-if="tab === 'ai'" class="panel">
+              <h2 class="course-home__ai-title">
+                <ion-icon :icon="sparklesOutline" class="course-home__ai-icon" />
+                AI Study Tools
+              </h2>
+              <p class="course-home__ai-lead">
+                Generate summaries, reviewers, study guides, flashcards, and gamified practice
+                questions from this course's materials.
+              </p>
+
+              <div class="course-home__ai-actions">
+                <ion-button @click="openAiTools">
+                  <ion-icon slot="start" :icon="sparklesOutline" />
+                  Open AI Study Tools
+                </ion-button>
+              </div>
+
+              <p class="course-home__ai-note">
+                AI study tools don't affect your grade or progress. They're extra practice
+                made from the course's own materials.
+              </p>
+            </section>
           </template>
 
           <section v-else class="panel">
@@ -148,7 +172,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { onIonViewWillEnter } from '@ionic/vue';
 import {
   IonPage, IonContent, IonRefresher, IonRefresherContent, IonButton, IonIcon,
@@ -157,6 +181,7 @@ import {
 import {
   arrowBackOutline, playCircleOutline, documentOutline,
   documentTextOutline, megaphoneOutline, albumsOutline, lockClosedOutline,
+  sparklesOutline,
 } from 'ionicons/icons';
 import LoadingState from '@/components/common/LoadingState.vue';
 import ErrorState from '@/components/common/ErrorState.vue';
@@ -167,13 +192,14 @@ import { getMaterialDownloadUrl } from '@/services/content';
 import type { Material } from '@/types/app';
 
 const route = useRoute();
+const router = useRouter();
 const courseId = computed(() => (route.params.id as string) || null);
 const {
   course, modules, materials, assignments, announcements,
   enrollment, progress, loading, error, reload,
 } = useCourse(courseId);
 
-const tab = ref<'content' | 'assignments' | 'announcements'>('content');
+const tab = ref<'content' | 'assignments' | 'announcements' | 'ai'>('content');
 const showEnroll = ref(false);
 const enrollKey = ref('');
 const enrolling = ref(false);
@@ -234,6 +260,11 @@ async function openMaterial(mat: Material) {
     const url = await getMaterialDownloadUrl(mat.storage_path);
     window.open(url, '_blank');
   }
+}
+
+function openAiTools() {
+  if (!course.value) return;
+  router.push({ name: 'student-ai-practice', params: { id: course.value.id } });
 }
 
 function formatDate(iso: string | null) {
@@ -305,4 +336,32 @@ function formatSize(bytes: number | null): string {
 .course-home__hero { padding:var(--plumi-panel-padding); border:1px solid var(--plumi-border); border-radius:24px; background:var(--plumi-surface); box-shadow:var(--plumi-shadow-card); }
 .course-home__progress { flex-wrap:wrap; }
 .course-home__progress .progress { min-width:100px; }
+
+/* AI Tools tab */
+.course-home__ai-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 var(--size-2, 0.5rem);
+  font-size: var(--plumi-text-lg);
+}
+.course-home__ai-icon { color: var(--plumi-primary); font-size: 22px; }
+.course-home__ai-lead {
+  margin: 0 0 var(--size-3, 0.75rem);
+  color: var(--plumi-text-muted);
+  font-size: var(--plumi-text-sm);
+  line-height: 1.65;
+}
+.course-home__ai-actions {
+  display: flex;
+  gap: var(--size-2, 0.5rem);
+  flex-wrap: wrap;
+  margin-bottom: var(--size-3, 0.75rem);
+}
+.course-home__ai-note {
+  margin: 0;
+  font-size: var(--plumi-text-xs);
+  color: var(--plumi-text-subtle);
+  line-height: 1.6;
+}
 </style>
