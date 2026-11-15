@@ -35,5 +35,4 @@ npm-debug.log*
 docs
 console
 structure
-package-lock.json
 .vscode
