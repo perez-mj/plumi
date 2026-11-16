@@ -1,0 +1,82 @@
+PLUMI — PLATFORM UI UPGRADE
+
+Installation
+1. Back up your current src/ and public/ folders.
+2. Extract this ZIP into C:\plumi. Merge the folders and replace only matching files. Do not delete your existing src or public folders.
+3. The package includes complete replacement files at their original paths, plus public/assets/plumi-brand.jpg. It is not a standalone project.
+4. Leave package.json, .env, Supabase migrations, and all other files unchanged. No database migration or new production dependency is required.
+5. Run npm run build in C:\plumi, followed by npm run dev.
+6. Hard-refresh the laptop browser and refresh the phone. Use the Network URL and actual port displayed by Vite on your phone.
+
+What changed
+- Shared shell: redesigned sidebar, compact account card, clearer topbar, wider tablet/mobile drawer breakpoint, Escape/Tab support, and mobile quick navigation.
+- Mobile bottom navigation has Dashboard, Courses, Messages, and Profile. It stays hidden inside messaging and meeting rooms to preserve workspace height.
+- All role dashboards: welcome panels, redesigned statistic cards with resolved icon names, better panel headers, spaced list rows, two-column mobile statistics.
+- Course cards: plum covers, clearer course title/category/body/footer hierarchy, and keyboard access.
+- Admin user/activity tables: desktop tables become labeled cards on small screens; actions remain available.
+- Course and assignment editors: single-column mobile fields, stronger input focus, usable button groups, and consistent panel spacing.
+- Course detail, lesson, roster, submissions, grades, announcements, meetings, and profile panels receive matching responsive refinements.
+- Messaging: tighter mobile heading, more chat space, comfortable composer and consistent panel geometry. Existing messaging script is preserved.
+- Login: two-panel desktop presentation and compact mobile branding; existing sign-in flow is preserved.
+- Landing: branded hero using your original supplied logo.
+- Light/dark plum theme remains supported. Status colors retain their meanings.
+
+Validation
+- vue-tsc completed successfully using a temporary strict validation configuration.
+- Vite 8 production build completed successfully in a temporary validation setup. The existing large-chunk warning remains.
+- Every page script is identical to the supplied version. Services, stores, composables, routes and database types are unchanged.
+- Validation uses dependencies compatible with the supplied major versions; the original lockfile and project build/lint configuration were not provided. Run the original project's npm run build and npm run lint after copying.
+- Automated browser visual checks could not run in this environment because the browser runtime was unavailable. Live phone/desktop visual review is still required.
+
+Manual checks in your real project
+- Test every role at desktop, tablet and phone widths; try light and dark mode.
+- Test sidebar collapse, mobile drawer, keyboard Tab/Escape, quick navigation, and profile/logout controls.
+- Test a populated and empty dashboard, course lists, forms, modals, table cards, long names/emails and long messages.
+- On a phone, open the keyboard in chat; confirm the composer remains usable and messages scroll.
+- Confirm login, messaging and all existing save/submit actions still behave as before.
+
+Existing behavior preserved
+This update does not change dashboard count calculations, enrollment permissions, real-time subscriptions, authentication, or other backend behavior. Sample-data previews, when used for visual checks, do not validate live Supabase behavior.
+
+Files included
+src/components/common/EmptyState.vue
+src/components/common/ErrorState.vue
+src/components/common/LoadingState.vue
+src/components/common/PageHeader.vue
+src/components/common/StatCard.vue
+src/components/courses/CourseCard.vue
+src/layouts/DefaultLayout.vue
+src/theme/design-tokens.css
+src/theme/global.css
+src/theme/variables.css
+src/views/admin/ActivityLogsPage.vue
+src/views/admin/AdminDashboardPage.vue
+src/views/admin/AnnouncementsPage.vue
+src/views/admin/CoursesOverviewPage.vue
+src/views/admin/UserDetailPage.vue
+src/views/admin/UsersPage.vue
+src/views/instructor/InstructorDashboardPage.vue
+src/views/instructor/assignments/AssignmentEditorPage.vue
+src/views/instructor/assignments/AssignmentListPage.vue
+src/views/instructor/assignments/SubmissionReviewPage.vue
+src/views/instructor/courses/CourseAnnouncementsPage.vue
+src/views/instructor/courses/CourseContentPage.vue
+src/views/instructor/courses/CourseEditorPage.vue
+src/views/instructor/courses/CourseRosterPage.vue
+src/views/instructor/courses/MyCoursesPage.vue
+src/views/instructor/meetings/MeetingSchedulerPage.vue
+src/views/public/LandingPage.vue
+src/views/public/LoginPage.vue
+src/views/shared/meetings/MeetingRoomPage.vue
+src/views/shared/meetings/MeetingsListPage.vue
+src/views/shared/messaging/MessagesPage.vue
+src/views/shared/profile/ProfilePage.vue
+src/views/student/StudentDashboardPage.vue
+src/views/student/assignments/MyAssignmentsPage.vue
+src/views/student/assignments/SubmitAssignmentPage.vue
+src/views/student/courses/BrowseCoursesPage.vue
+src/views/student/courses/CourseHomePage.vue
+src/views/student/courses/LessonViewPage.vue
+src/views/student/courses/MyEnrolledCoursesPage.vue
+src/views/student/grades/MyGradesPage.vue
+public/assets/plumi-brand.jpg
