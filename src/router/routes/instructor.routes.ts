@@ -79,4 +79,16 @@ export const instructorRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/instructor/meetings/MeetingSchedulerPage.vue'),
     meta: { requiresRole: 'instructor' },
   },
+  {
+  path: 'instructor/courses/:id/content/lessons/new',
+  name: 'instructor-lesson-new',
+  component: () => import('@/views/instructor/courses/LessonEditorPage.vue'),
+  meta: { requiresRole: 'instructor' },
+},
+{
+  path: 'instructor/courses/:id/content/lessons/:lessonId',
+  name: 'instructor-lesson-edit',
+  component: () => import('@/views/instructor/courses/LessonEditorPage.vue'),
+  meta: { requiresRole: 'instructor' },
+},
 ];

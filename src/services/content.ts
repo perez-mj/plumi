@@ -1,6 +1,15 @@
 // src/services/content.ts
 import { supabase } from '@/lib/supabase';
-import type { Lesson, Material, Module, ModuleWithLessons, MaterialType } from '@/types/app';
+import { markdownExcerpt } from '@/lib/markdownExcerpt';
+import type {
+  Lesson,
+  LessonWithExcerpt,
+  Material,
+  Module,
+  ModuleWithLessons,
+  MaterialType,
+} from '@/types/app';
+
 
 /* ---------------- Modules ---------------- */
 
@@ -17,7 +26,12 @@ export async function listModulesWithLessons(courseId: string): Promise<ModuleWi
 
   return (data ?? []).map((m) => ({
     ...m,
-    lessons: (m.lessons ?? []).sort((a: Lesson, b: Lesson) => a.position - b.position),
+    lessons: (m.lessons ?? [])
+      .sort((a: Lesson, b: Lesson) => a.position - b.position)
+      .map<LessonWithExcerpt>((l: Lesson) => ({
+        ...l,
+        excerpt: markdownExcerpt(l.content),
+      })),
   })) as ModuleWithLessons[];
 }
 
@@ -74,6 +88,16 @@ export async function updateLesson(
 ): Promise<void> {
   const { error } = await supabase.from('lessons').update(input).eq('id', lessonId);
   if (error) throw error;
+}
+
+export async function getLesson(lessonId: string): Promise<Lesson> {
+  const { data, error } = await supabase
+    .from('lessons')
+    .select('*')
+    .eq('id', lessonId)
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 export async function deleteLesson(lessonId: string): Promise<void> {

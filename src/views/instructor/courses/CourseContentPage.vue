@@ -19,19 +19,24 @@
             <div>
               <p v-if="course.code" class="course-content__code">{{ course.code }}</p>
               <h1 class="course-content__title">{{ course.title }}</h1>
-              <p class="course-content__meta">{{ course.status }} · {{ modules.length }} modules · {{ totalLessons }} lessons</p>
+              <p class="course-content__meta">{{ course.status }} · {{ modules.length }} modules · {{ totalLessons }}
+                lessons</p>
             </div>
             <div class="course-content__actions">
-              <ion-button size="small" fill="outline" @click="$router.push({ name: 'instructor-course-edit', params: { id: course.id } })">
+              <ion-button size="small" fill="outline"
+                @click="$router.push({ name: 'instructor-course-edit', params: { id: course.id } })">
                 Edit Course
               </ion-button>
-              <ion-button size="small" fill="outline" @click="$router.push({ name: 'instructor-course-roster', params: { id: course.id } })">
+              <ion-button size="small" fill="outline"
+                @click="$router.push({ name: 'instructor-course-roster', params: { id: course.id } })">
                 Roster
               </ion-button>
-              <ion-button size="small" fill="outline" @click="$router.push({ name: 'instructor-course-announcements', params: { id: course.id } })">
+              <ion-button size="small" fill="outline"
+                @click="$router.push({ name: 'instructor-course-announcements', params: { id: course.id } })">
                 Announcements
               </ion-button>
-              <ion-button size="small" fill="outline" @click="$router.push({ name: 'instructor-meeting-new', params: { id: course.id } })">
+              <ion-button size="small" fill="outline"
+                @click="$router.push({ name: 'instructor-meeting-new', params: { id: course.id } })">
                 Schedule Meeting
               </ion-button>
               <ion-button size="small" fill="outline" :disabled="openingChat" @click="openCourseChat">
@@ -50,7 +55,8 @@
               </ion-button>
             </div>
 
-            <EmptyState v-if="!modules.length" title="No content" message="Add a module to start building your course." :icon="albumsOutline" />
+            <EmptyState v-if="!modules.length" title="No content" message="Add a module to start building your course."
+              :icon="albumsOutline" />
 
             <div v-else class="modules">
               <article v-for="m in modules" :key="m.id" class="module">
@@ -60,7 +66,7 @@
                     <p v-if="m.description" class="module__desc">{{ m.description }}</p>
                   </div>
                   <div class="module__actions">
-                    <ion-button size="small" fill="clear" @click="openLessonModal(m.id)">
+                    <ion-button size="small" fill="clear" @click="openLessonEditor(m.id, null)">
                       <ion-icon :icon="addOutline" />
                     </ion-button>
                     <ion-button size="small" fill="clear" color="danger" @click="removeModule(m.id)">
@@ -73,8 +79,12 @@
                     <ion-icon :icon="playCircleOutline" class="lesson__icon" />
                     <div class="lesson__body">
                       <p class="lesson__title">{{ l.title }}</p>
+                      <p v-if="l.excerpt" class="lesson__excerpt">{{ l.excerpt }}</p>
                       <p v-if="l.video_url" class="lesson__meta">Video lesson</p>
                     </div>
+                    <ion-button size="small" fill="clear" @click="openLessonEditor(m.id, l.id)">
+                      <ion-icon :icon="createOutline" />
+                    </ion-button>
                     <ion-button size="small" fill="clear" color="danger" @click="removeLesson(l.id)">
                       <ion-icon :icon="trashOutline" />
                     </ion-button>
@@ -88,21 +98,26 @@
           <section class="course-content__panel">
             <div class="course-content__panel-head">
               <h2>Assignments</h2>
-              <ion-button size="small" @click="$router.push({ name: 'instructor-assignment-new', params: { courseId: course.id } })">
+              <ion-button size="small"
+                @click="$router.push({ name: 'instructor-assignment-new', params: { courseId: course.id } })">
                 <ion-icon slot="start" :icon="addOutline" /> Assignment
               </ion-button>
             </div>
-            <EmptyState v-if="!assignments.length" title="No assignments" message="Create assignments for this course." :icon="documentTextOutline" />
+            <EmptyState v-if="!assignments.length" title="No assignments" message="Create assignments for this course."
+              :icon="documentTextOutline" />
             <ul v-else class="assignments">
               <li v-for="a in assignments" :key="a.id" class="assignment">
                 <div class="assignment__body">
                   <p class="assignment__title">{{ a.title }}</p>
-                  <p class="assignment__meta">{{ formatDate(a.due_at) }} · {{ a.max_score }} pts · {{ a.is_published ? 'Published' : 'Draft' }}</p>
+                  <p class="assignment__meta">{{ formatDate(a.due_at) }} · {{ a.max_score }} pts · {{ a.is_published ?
+                    'Published' : 'Draft' }}</p>
                 </div>
-                <ion-button size="small" fill="outline" @click="$router.push({ name: 'instructor-assignment-edit', params: { courseId: course.id, id: a.id } })">
+                <ion-button size="small" fill="outline"
+                  @click="$router.push({ name: 'instructor-assignment-edit', params: { courseId: course.id, id: a.id } })">
                   Edit
                 </ion-button>
-                <ion-button size="small" @click="$router.push({ name: 'instructor-submissions', params: { id: a.id } })">
+                <ion-button size="small"
+                  @click="$router.push({ name: 'instructor-submissions', params: { id: a.id } })">
                   Submissions
                 </ion-button>
               </li>
@@ -116,7 +131,8 @@
                 <ion-icon slot="start" :icon="cloudUploadOutline" /> Upload
               </ion-button>
             </div>
-            <EmptyState v-if="!materials.length" title="No materials" message="Upload PDFs, documents, or links." :icon="documentOutline" />
+            <EmptyState v-if="!materials.length" title="No materials" message="Upload PDFs, documents, or links."
+              :icon="documentOutline" />
             <ul v-else class="materials">
               <li v-for="mat in materials" :key="mat.id" class="material">
                 <ion-icon :icon="documentOutline" />
@@ -127,13 +143,8 @@
                     <span class="material__extraction" :class="extractionClass(mat)">{{ extractionLabel(mat) }}</span>
                   </p>
                 </div>
-                <ion-button
-                  v-if="isMaterialExtractable(mat.type) && !mat.extracted_text && !extractingId"
-                  size="small"
-                  fill="clear"
-                  title="Extract text for AI"
-                  @click="retryExtraction(mat.id)"
-                >
+                <ion-button v-if="isMaterialExtractable(mat.type) && !mat.extracted_text && !extractingId" size="small"
+                  fill="clear" title="Extract text for AI" @click="retryExtraction(mat.id)">
                   <ion-icon :icon="sparklesOutline" />
                 </ion-button>
                 <ion-spinner v-else-if="extractingId === mat.id" name="dots" />
@@ -148,54 +159,55 @@
 
       <!-- Inline toast stack -->
       <div v-if="toasts.length" class="toast-stack" role="status" aria-live="polite">
-        <div
-          v-for="t in toasts"
-          :key="t.id"
-          class="toast"
-          :class="`toast--${t.kind}`"
-        >
+        <div v-for="t in toasts" :key="t.id" class="toast" :class="`toast--${t.kind}`">
           {{ t.message }}
         </div>
       </div>
 
       <!-- Add Module Modal -->
       <ion-modal :is-open="showModuleModal" @didDismiss="showModuleModal = false">
-        <ion-content class="modal-content"><div class="modal-inner">
-          <h2>Add Module</h2>
-          <input v-model="newModuleTitle" placeholder="Module title" class="modal-input" />
-          <textarea v-model="newModuleDesc" placeholder="Description (optional)" rows="3" class="modal-input" />
-          <div class="modal-actions">
-            <ion-button fill="clear" @click="showModuleModal = false">Cancel</ion-button>
-            <ion-button :disabled="addingModule" @click="addModule">Add</ion-button>
+        <ion-content class="modal-content">
+          <div class="modal-inner">
+            <h2>Add Module</h2>
+            <input v-model="newModuleTitle" placeholder="Module title" class="modal-input" />
+            <textarea v-model="newModuleDesc" placeholder="Description (optional)" rows="3" class="modal-input" />
+            <div class="modal-actions">
+              <ion-button fill="clear" @click="showModuleModal = false">Cancel</ion-button>
+              <ion-button :disabled="addingModule" @click="addModule">Add</ion-button>
+            </div>
           </div>
-        </div></ion-content>
+        </ion-content>
       </ion-modal>
 
       <!-- Add Lesson Modal -->
       <ion-modal :is-open="showLessonModal" @didDismiss="showLessonModal = false">
-        <ion-content class="modal-content"><div class="modal-inner">
-          <h2>Add Lesson</h2>
-          <input v-model="newLessonTitle" placeholder="Lesson title" class="modal-input" />
-          <textarea v-model="newLessonContent" placeholder="Lesson content" rows="4" class="modal-input" />
-          <input v-model="newLessonVideo" placeholder="Video URL (optional)" class="modal-input" />
-          <div class="modal-actions">
-            <ion-button fill="clear" @click="showLessonModal = false">Cancel</ion-button>
-            <ion-button :disabled="addingLesson" @click="addLesson">Add</ion-button>
+        <ion-content class="modal-content">
+          <div class="modal-inner">
+            <h2>Add Lesson</h2>
+            <input v-model="newLessonTitle" placeholder="Lesson title" class="modal-input" />
+            <textarea v-model="newLessonContent" placeholder="Lesson content" rows="4" class="modal-input" />
+            <input v-model="newLessonVideo" placeholder="Video URL (optional)" class="modal-input" />
+            <div class="modal-actions">
+              <ion-button fill="clear" @click="showLessonModal = false">Cancel</ion-button>
+              <ion-button :disabled="addingLesson" @click="addLesson">Add</ion-button>
+            </div>
           </div>
-        </div></ion-content>
+        </ion-content>
       </ion-modal>
 
       <!-- Upload Material Modal -->
       <ion-modal :is-open="showUploadModal" @didDismiss="showUploadModal = false">
-        <ion-content class="modal-content"><div class="modal-inner">
-          <h2>Upload Material</h2>
-          <input v-model="uploadTitle" placeholder="Material title" class="modal-input" />
-          <input type="file" @change="onFileChange" class="modal-input" />
-          <div class="modal-actions">
-            <ion-button fill="clear" @click="showUploadModal = false">Cancel</ion-button>
-            <ion-button :disabled="uploading" @click="doUpload">{{ uploading ? 'Uploading…' : 'Upload' }}</ion-button>
+        <ion-content class="modal-content">
+          <div class="modal-inner">
+            <h2>Upload Material</h2>
+            <input v-model="uploadTitle" placeholder="Material title" class="modal-input" />
+            <input type="file" @change="onFileChange" class="modal-input" />
+            <div class="modal-actions">
+              <ion-button fill="clear" @click="showUploadModal = false">Cancel</ion-button>
+              <ion-button :disabled="uploading" @click="doUpload">{{ uploading ? 'Uploading…' : 'Upload' }}</ion-button>
+            </div>
           </div>
-        </div></ion-content>
+        </ion-content>
       </ion-modal>
     </ion-content>
   </ion-page>
@@ -210,8 +222,9 @@ import {
 import {
   arrowBackOutline, addOutline, playCircleOutline, documentOutline,
   documentTextOutline, trashOutline, cloudUploadOutline, albumsOutline,
-  chatbubblesOutline, sparklesOutline,
+  chatbubblesOutline, sparklesOutline, createOutline,
 } from 'ionicons/icons';
+import { markdownExcerpt } from '@/composables/useMarkdown';
 import LoadingState from '@/components/common/LoadingState.vue';
 import ErrorState from '@/components/common/ErrorState.vue';
 import EmptyState from '@/components/common/EmptyState.vue';
@@ -233,6 +246,21 @@ const {
 } = useCourse(courseId);
 
 const totalLessons = computed(() => modules.value.reduce((n, m) => n + m.lessons.length, 0));
+
+function openLessonEditor(moduleId: string, lessonId: string | null) {
+  if (lessonId) {
+    router.push({
+      name: 'instructor-lesson-edit',
+      params: { id: courseId.value!, lessonId },
+    });
+  } else {
+    router.push({
+      name: 'instructor-lesson-new',
+      params: { id: courseId.value! },
+      query: { moduleId },
+    });
+  }
+}
 
 /* ------------------ Toast (page-scoped) ------------------ */
 type ToastKind = 'info' | 'success' | 'warn' | 'error';
@@ -480,52 +508,306 @@ function formatDate(iso: string | null) {
 </script>
 
 <style scoped>
-.course-content__header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: var(--size-3, 0.75rem); padding: var(--size-4, 1rem); border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-lg); background: var(--plumi-surface); }
-.course-content__code { margin: 0; font-family: var(--plumi-font-mono); font-size: var(--plumi-text-xs); color: var(--plumi-text-subtle); }
-.course-content__title { margin: 4px 0; font-size: var(--plumi-text-2xl); letter-spacing: -0.03em; }
-.course-content__meta { margin: 0; font-size: var(--plumi-text-sm); color: var(--plumi-text-muted); }
-.course-content__actions { display: flex; gap: var(--size-2, 0.5rem); flex-wrap: wrap; }
-.course-content__error { flex-basis: 100%; margin: var(--size-2) 0 0; font-size: var(--plumi-text-sm); color: var(--plumi-danger); }
-.course-content__panel { padding: var(--size-4, 1rem); border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-lg); background: var(--plumi-surface); }
-.course-content__panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--size-3, 0.75rem); }
-.course-content__panel-head h2 { margin: 0; font-size: var(--plumi-text-md); }
-.modules { display: flex; flex-direction: column; gap: var(--size-3, 0.75rem); }
-.module { border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-md); overflow: hidden; }
-.module__header { display: flex; align-items: flex-start; justify-content: space-between; padding: var(--size-3, 0.75rem); background: var(--plumi-surface-muted); }
-.module__title { margin: 0; font-size: var(--plumi-text-md); }
-.module__desc { margin: 2px 0 0; font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
-.module__actions { display: flex; gap: 2px; }
-.module__empty { margin: 0; padding: var(--size-3, 0.75rem); font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
-.lessons { list-style: none; padding: 0; margin: 0; }
-.lesson { display: flex; align-items: center; gap: var(--size-3, 0.75rem); padding: var(--size-3, 0.75rem); border-top: 1px solid var(--plumi-border); }
-.lesson__icon { font-size: 20px; color: var(--plumi-primary); }
-.lesson__body { flex: 1; }
-.lesson__title { margin: 0; font-size: var(--plumi-text-sm); }
-.lesson__meta { margin: 0; font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
-.materials, .assignments { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
-.material, .assignment { display: flex; align-items: center; gap: var(--size-2, 0.5rem); padding: var(--size-2, 0.5rem); border-radius: var(--plumi-radius-sm); }
-.material__body, .assignment__body { flex: 1; }
-.material__title, .assignment__title { margin: 0; font-size: var(--plumi-text-sm); }
-.material__meta, .assignment__meta { margin: 0; font-size: var(--plumi-text-xs); color: var(--plumi-text-muted); }
-.material__extraction { margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 0.7em; letter-spacing: 0.04em; }
-.material__extraction.is-ready    { background: var(--plumi-success-soft, #e8f7ee); color: var(--plumi-success, #1a7f48); }
-.material__extraction.is-pending  { background: var(--plumi-warning-soft, #fff4d6); color: var(--plumi-warning, #8a6200); }
-.material__extraction.is-na       { background: var(--plumi-surface-muted, #f1f2f4); color: var(--plumi-text-muted, #666); }
-.modal-content { --background: var(--plumi-surface); }
-.modal-inner { padding: var(--size-5, 1.25rem); max-width: 520px; margin-inline: auto; display: flex; flex-direction: column; gap: var(--size-3, 0.75rem); }
-.modal-inner h2 { margin: 0; }
-.modal-input { width: 100%; padding: var(--size-2, 0.5rem); border: 1px solid var(--plumi-border); border-radius: var(--plumi-radius-md); background: var(--plumi-surface); color: var(--plumi-ink); font: inherit; }
-.modal-actions { display: flex; justify-content: flex-end; gap: var(--size-2, 0.5rem); }
+.course-content__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--size-3, 0.75rem);
+  padding: var(--size-4, 1rem);
+  border: 1px solid var(--plumi-border);
+  border-radius: var(--plumi-radius-lg);
+  background: var(--plumi-surface);
+}
 
-.course-content__panel { min-width:0; padding:var(--plumi-panel-padding); border-radius:20px; box-shadow:var(--plumi-shadow-card); }
-.course-content__panel-head, .module__header { gap:14px; flex-wrap:wrap; }
-.course-content__actions, .modal-actions, .module__actions { gap:10px; flex-wrap:wrap; }
-.assignment__body, .assignment__meta, .course-content__meta, .lesson__body, .lesson__meta, .material__body, .material__meta, .module__desc { min-width:0; overflow-wrap:anywhere; line-height:1.65; }
-@media(max-width:600px) { .course-content__actions > ion-button, .modal-actions > ion-button, .module__actions > ion-button { flex:1 1 auto; min-height:44px; } }
-.course-content__header { padding:28px; background:var(--plumi-primary-subtle); border-radius:24px; }
-.module__header { gap:12px; flex-wrap:wrap; }
-.lesson, .material, .assignment { flex-wrap:wrap; }
-.lesson__body, .material__body, .assignment__body { min-width:120px; }
+.course-content__code {
+  margin: 0;
+  font-family: var(--plumi-font-mono);
+  font-size: var(--plumi-text-xs);
+  color: var(--plumi-text-subtle);
+}
+
+.course-content__title {
+  margin: 4px 0;
+  font-size: var(--plumi-text-2xl);
+  letter-spacing: -0.03em;
+}
+
+.course-content__meta {
+  margin: 0;
+  font-size: var(--plumi-text-sm);
+  color: var(--plumi-text-muted);
+}
+
+.course-content__actions {
+  display: flex;
+  gap: var(--size-2, 0.5rem);
+  flex-wrap: wrap;
+}
+
+.course-content__error {
+  flex-basis: 100%;
+  margin: var(--size-2) 0 0;
+  font-size: var(--plumi-text-sm);
+  color: var(--plumi-danger);
+}
+
+.course-content__panel {
+  padding: var(--size-4, 1rem);
+  border: 1px solid var(--plumi-border);
+  border-radius: var(--plumi-radius-lg);
+  background: var(--plumi-surface);
+}
+
+.course-content__panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--size-3, 0.75rem);
+}
+
+.course-content__panel-head h2 {
+  margin: 0;
+  font-size: var(--plumi-text-md);
+}
+
+.modules {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-3, 0.75rem);
+}
+
+.module {
+  border: 1px solid var(--plumi-border);
+  border-radius: var(--plumi-radius-md);
+  overflow: hidden;
+}
+
+.module__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--size-3, 0.75rem);
+  background: var(--plumi-surface-muted);
+}
+
+.module__title {
+  margin: 0;
+  font-size: var(--plumi-text-md);
+}
+
+.module__desc {
+  margin: 2px 0 0;
+  font-size: var(--plumi-text-xs);
+  color: var(--plumi-text-muted);
+}
+
+.module__actions {
+  display: flex;
+  gap: 2px;
+}
+
+.module__empty {
+  margin: 0;
+  padding: var(--size-3, 0.75rem);
+  font-size: var(--plumi-text-xs);
+  color: var(--plumi-text-muted);
+}
+
+.lessons {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.lesson {
+  display: flex;
+  align-items: center;
+  gap: var(--size-3, 0.75rem);
+  padding: var(--size-3, 0.75rem);
+  border-top: 1px solid var(--plumi-border);
+}
+
+.lesson__icon {
+  font-size: 20px;
+  color: var(--plumi-primary);
+}
+
+.lesson__body {
+  flex: 1;
+}
+
+.lesson__title {
+  margin: 0;
+  font-size: var(--plumi-text-sm);
+}
+
+.lesson__meta {
+  margin: 0;
+  font-size: var(--plumi-text-xs);
+  color: var(--plumi-text-muted);
+}
+
+.materials,
+.assignments {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.material,
+.assignment {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2, 0.5rem);
+  padding: var(--size-2, 0.5rem);
+  border-radius: var(--plumi-radius-sm);
+}
+
+.material__body,
+.assignment__body {
+  flex: 1;
+}
+
+.material__title,
+.assignment__title {
+  margin: 0;
+  font-size: var(--plumi-text-sm);
+}
+
+.material__meta,
+.assignment__meta {
+  margin: 0;
+  font-size: var(--plumi-text-xs);
+  color: var(--plumi-text-muted);
+}
+
+.material__extraction {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 0.7em;
+  letter-spacing: 0.04em;
+}
+
+.material__extraction.is-ready {
+  background: var(--plumi-success-soft, #e8f7ee);
+  color: var(--plumi-success, #1a7f48);
+}
+
+.material__extraction.is-pending {
+  background: var(--plumi-warning-soft, #fff4d6);
+  color: var(--plumi-warning, #8a6200);
+}
+
+.material__extraction.is-na {
+  background: var(--plumi-surface-muted, #f1f2f4);
+  color: var(--plumi-text-muted, #666);
+}
+
+.modal-content {
+  --background: var(--plumi-surface);
+}
+
+.modal-inner {
+  padding: var(--size-5, 1.25rem);
+  max-width: 520px;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-3, 0.75rem);
+}
+
+.modal-inner h2 {
+  margin: 0;
+}
+
+.modal-input {
+  width: 100%;
+  padding: var(--size-2, 0.5rem);
+  border: 1px solid var(--plumi-border);
+  border-radius: var(--plumi-radius-md);
+  background: var(--plumi-surface);
+  color: var(--plumi-ink);
+  font: inherit;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--size-2, 0.5rem);
+}
+
+.course-content__panel {
+  min-width: 0;
+  padding: var(--plumi-panel-padding);
+  border-radius: 20px;
+  box-shadow: var(--plumi-shadow-card);
+}
+
+.course-content__panel-head,
+.module__header {
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.course-content__actions,
+.modal-actions,
+.module__actions {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.assignment__body,
+.assignment__meta,
+.course-content__meta,
+.lesson__body,
+.lesson__meta,
+.material__body,
+.material__meta,
+.module__desc {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+}
+
+@media(max-width:600px) {
+
+  .course-content__actions>ion-button,
+  .modal-actions>ion-button,
+  .module__actions>ion-button {
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
+}
+
+.course-content__header {
+  padding: 28px;
+  background: var(--plumi-primary-subtle);
+  border-radius: 24px;
+}
+
+.module__header {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.lesson,
+.material,
+.assignment {
+  flex-wrap: wrap;
+}
+
+.lesson__body,
+.material__body,
+.assignment__body {
+  min-width: 120px;
+}
+
+.lesson__excerpt { margin: 2px 0 0; font-size: var(--plumi-text-xs); color: var(--plumi-text-subtle); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
 /* Inline toast */
 .toast-stack {
@@ -541,17 +823,27 @@ function formatDate(iso: string | null) {
   z-index: 9000;
   pointer-events: none;
 }
+
 .toast {
   padding: 10px 14px;
   border-radius: 12px;
   font-size: var(--plumi-text-sm);
-  box-shadow: var(--plumi-shadow-card, 0 4px 16px rgba(0,0,0,0.08));
+  box-shadow: var(--plumi-shadow-card, 0 4px 16px rgba(0, 0, 0, 0.08));
   background: var(--plumi-surface, #fff);
   color: var(--plumi-ink, #111);
   border: 1px solid var(--plumi-border, #e5e7eb);
   pointer-events: auto;
 }
-.toast--success { border-color: var(--plumi-success, #1a7f48); }
-.toast--warn    { border-color: var(--plumi-warning, #8a6200); }
-.toast--error   { border-color: var(--plumi-danger, #b00020); }
+
+.toast--success {
+  border-color: var(--plumi-success, #1a7f48);
+}
+
+.toast--warn {
+  border-color: var(--plumi-warning, #8a6200);
+}
+
+.toast--error {
+  border-color: var(--plumi-danger, #b00020);
+}
 </style>

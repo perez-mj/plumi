@@ -17,6 +17,8 @@ import './theme/variables.css';
 import './theme/design-tokens.css';
 import './theme/global.css';
 
+import 'highlight.js/styles/atom-one-dark.css';
+
 installAuthDeepLink();
 
 const app = createApp(App)

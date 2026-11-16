@@ -28,10 +28,6 @@ export interface CourseWithMeta extends Course {
   lesson_count?: number;
 }
 
-export interface ModuleWithLessons extends Module {
-  lessons: Lesson[];
-}
-
 export type GeneratedQuestion = Database['public']['Tables']['generated_questions']['Row'];
 export type MaterialGeneration = Database['public']['Tables']['material_generations']['Row'];
 export type QuestionSessionResult = Database['public']['Tables']['question_session_results']['Row'];
@@ -76,4 +72,17 @@ export interface PracticeQuestion {
   explanation: string | null;
   difficulty: Difficulty;
   position: number;
+}
+
+/**
+ * A lesson row augmented with a client-side plain-text preview of `content`.
+ * Only produced by listModulesWithLessons(); never persisted.
+ */
+export interface LessonWithExcerpt extends Lesson {
+  excerpt: string;
+}
+
+// Change ModuleWithLessons to use it:
+export interface ModuleWithLessons extends Module {
+  lessons: LessonWithExcerpt[];
 }
