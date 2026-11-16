@@ -1,11 +1,12 @@
 <template>
   <ion-page class="plumi-page">
-    <div class="layout" :class="{ 'layout--drawer-open': mobileNavOpen }">
+    <div class="layout">
       <button
         v-if="mobileNavOpen"
         class="drawer-backdrop"
         type="button"
         aria-label="Close navigation menu"
+        tabindex="-1"
         @click="closeMobileNav"
       />
 
@@ -13,7 +14,7 @@
         id="plumi-sidebar"
         class="sidebar"
         :class="{
-          'sidebar--collapsed': collapsed,
+          'sidebar--collapsed': collapsed && !isMobile,
           'sidebar--mobile-open': mobileNavOpen,
         }"
         :aria-hidden="isMobile ? !mobileNavOpen : undefined"
@@ -22,21 +23,13 @@
         @keydown.tab="trapDrawerFocus"
       >
         <div class="sidebar__brand">
-          <div class="sidebar__brand-mark">
-            <img
-              src="/assets/plumi-brand.jpg"
-              alt="Plumi logo"
-              class="sidebar__logo"
-            />
-          </div>
-
-          <span v-if="!collapsed || isMobile" class="sidebar__name">
-            Plumi
-          </span>
+          <img src="/assets/plumi-brand.jpg" alt="" class="sidebar__logo" />
+          <span v-if="showSidebarLabels" class="sidebar__name">Plumi</span>
 
           <button
             v-if="isMobile"
-            class="icon-button sidebar__mobile-close"
+            ref="closeButton"
+            class="icon-button sidebar__close"
             type="button"
             aria-label="Close navigation menu"
             @click="closeMobileNav"
@@ -45,8 +38,8 @@
           </button>
         </div>
 
-        <div v-if="!collapsed || isMobile" class="sidebar__section-label">
-          WORKSPACE
+        <div v-if="showSidebarLabels" class="sidebar__section-label">
+          Workspace
         </div>
 
         <nav class="sidebar__nav" aria-label="Main navigation">
@@ -57,58 +50,53 @@
             class="sidebar__link"
             :class="{ 'sidebar__link--active': isActive(item.to) }"
             :aria-current="isActive(item.to) ? 'page' : undefined"
-            :title="collapsed ? item.label : undefined"
+            :aria-label="item.label"
+            :title="showSidebarLabels ? undefined : item.label"
             @click="closeMobileNav"
           >
-            <ion-icon :icon="item.icon" class="sidebar__icon" />
-
-            <span v-if="!collapsed || isMobile" class="sidebar__link-label">
-              {{ item.label }}
-            </span>
+            <ion-icon :icon="item.icon" aria-hidden="true" />
+            <span v-if="showSidebarLabels">{{ item.label }}</span>
           </RouterLink>
         </nav>
 
         <div class="sidebar__footer">
           <RouterLink
-            v-if="!collapsed || isMobile"
             to="/app/profile"
             class="user-card"
             :class="{ 'user-card--active': isActive('/app/profile') }"
             :aria-current="isActive('/app/profile') ? 'page' : undefined"
+            aria-label="View profile"
             title="View profile"
             @click="closeMobileNav"
           >
-            <div class="user-card__avatar">{{ userInitials }}</div>
-
-            <div class="user-card__meta">
-              <span class="user-card__name">{{ displayName }}</span>
-              <span class="user-card__role">{{ displayRole }}</span>
-            </div>
+            <span class="user-card__avatar">{{ userInitials }}</span>
+            <span v-if="showSidebarLabels" class="user-card__meta">
+              <strong>{{ displayName }}</strong>
+              <small>{{ displayRole }}</small>
+            </span>
           </RouterLink>
 
           <button
             v-if="!isMobile"
             class="sidebar__action"
             type="button"
-            :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
             :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+            :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
             @click="collapsed = !collapsed"
           >
-            <ion-icon
-              :icon="collapsed ? arrowForwardOutline : arrowBackOutline"
-            />
-            <span v-if="!collapsed || isMobile">Collapse sidebar</span>
+            <ion-icon :icon="collapsed ? arrowForwardOutline : arrowBackOutline" />
+            <span v-if="showSidebarLabels">Collapse sidebar</span>
           </button>
 
           <button
             class="sidebar__action sidebar__action--logout"
             type="button"
-            :title="collapsed ? 'Log out' : undefined"
+            aria-label="Log out"
             :disabled="loggingOut"
             @click="openLogoutModal"
           >
             <ion-icon :icon="logOutOutline" />
-            <span v-if="!collapsed || isMobile">
+            <span v-if="showSidebarLabels">
               {{ loggingOut ? 'Signing out…' : 'Log out' }}
             </span>
           </button>
@@ -117,42 +105,18 @@
 
       <main class="main" :inert="isMobile && mobileNavOpen">
         <header class="topbar">
-          <div class="topbar__left">
-            <button
-              v-if="isMobile"
-              class="icon-button topbar__menu"
-              type="button"
-              aria-label="Open navigation menu"
-              aria-controls="plumi-sidebar"
-              :aria-expanded="mobileNavOpen"
-              @click="openMobileNav"
-            >
-              <ion-icon :icon="menuOutline" />
-            </button>
-
-            <div class="topbar__heading">
-              <span class="topbar__eyebrow">
-                {{ displayRole }} workspace
-              </span>
-              <p class="topbar__title">{{ pageTitle }}</p>
-            </div>
+          <div class="topbar__heading">
+            <span class="topbar__eyebrow">{{ displayRole }} workspace</span>
+            <p class="topbar__title">{{ pageTitle }}</p>
           </div>
 
           <div class="topbar__actions">
-            <RealtimeStatusBadge
-              :status="realtimeStatus"
-              :show-label="!isMobile"
-            />
-
             <NotificationBell />
 
             <button
-              class="icon-button theme-toggle"
+              class="icon-button"
               type="button"
-              :aria-label="
-                isDark ? 'Switch to light mode' : 'Switch to dark mode'
-              "
-              :title="isDark ? 'Light mode' : 'Dark mode'"
+              :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
               @click="toggle"
             >
               <ion-icon :icon="isDark ? sunnyOutline : moonOutline" />
@@ -160,9 +124,9 @@
 
             <button
               v-if="isMobile"
-              class="user-avatar-button"
+              class="user-card__avatar topbar__avatar"
               type="button"
-              aria-label="Open navigation and account menu"
+              aria-label="Open account menu"
               @click="openMobileNav"
             >
               {{ userInitials }}
@@ -174,15 +138,7 @@
           <ion-router-outlet class="content-outlet" />
         </div>
 
-        <nav
-          v-if="
-            isMobile &&
-            route.name !== 'messages' &&
-            route.name !== 'meeting-room'
-          "
-          class="mobile-tabs"
-          aria-label="Quick navigation"
-        >
+        <nav v-if="isMobile" class="mobile-tabs" aria-label="Quick navigation">
           <RouterLink
             v-for="item in mobileNavItems"
             :key="item.to"
@@ -190,20 +146,27 @@
             :class="{ 'mobile-tabs__active': isActive(item.to) }"
             :aria-current="isActive(item.to) ? 'page' : undefined"
           >
-            <ion-icon :icon="item.icon" />
-            <span>
-              {{
-                item.label === 'My Courses' || item.label === 'All Courses'
-                  ? 'Courses'
-                  : item.label
-              }}
-            </span>
+            <ion-icon :icon="item.icon" aria-hidden="true" />
+            <span>{{ item.icon === bookOutline ? 'Courses' : item.label }}</span>
           </RouterLink>
+
+          <button
+            ref="moreButton"
+            type="button"
+            aria-controls="plumi-sidebar"
+            :aria-expanded="mobileNavOpen"
+            :class="{ 'mobile-tabs__active': isMoreActive }"
+            @click="openMobileNav"
+          >
+            <ion-icon :icon="ellipsisHorizontalOutline" aria-hidden="true" />
+            <span>More</span>
+          </button>
         </nav>
       </main>
     </div>
 
     <ion-alert
+      css-class="plumi-logout-alert"
       :is-open="logoutModalOpen"
       header="Log out?"
       message="You'll need to sign in again to access your courses."
@@ -215,92 +178,199 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
-import { IonPage, IonIcon, IonRouterOutlet, IonAlert } from '@ionic/vue';
-
+import { IonAlert, IonIcon, IonPage, IonRouterOutlet } from '@ionic/vue';
 import {
-  homeOutline,
+  arrowBackOutline,
+  arrowForwardOutline,
   bookOutline,
   chatbubblesOutline,
-  videocamOutline,
-  personOutline,
-  arrowForwardOutline,
-  arrowBackOutline,
-  sunnyOutline,
-  moonOutline,
-  logOutOutline,
-  peopleOutline,
-  documentTextOutline,
-  menuOutline,
   closeOutline,
+  documentTextOutline,
+  ellipsisHorizontalOutline,
+  homeOutline,
   listOutline,
+  logOutOutline,
+  moonOutline,
+  peopleOutline,
+  sunnyOutline,
   trophyOutline,
+  videocamOutline,
 } from 'ionicons/icons';
-
 import { useTheme } from '@/composables/useTheme';
 import { useAuthStore } from '@/stores/authStore';
 import NotificationBell from '@/components/layout/NotificationBell.vue';
-import RealtimeStatusBadge from '@/components/realtime/RealtimeStatusBadge.vue';
-import { useNotifications } from '@/composables/useNotifications';
-
-const { isDark, toggle } = useTheme();
-const { status: realtimeStatus } = useNotifications();
 
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
+const { isDark, toggle } = useTheme();
 
+const viewport = window.matchMedia('(max-width: 960px)');
+const isMobile = ref(viewport.matches);
 const collapsed = ref(false);
 const mobileNavOpen = ref(false);
-const isMobile = ref(false);
 const loggingOut = ref(false);
 const logoutModalOpen = ref(false);
+const closeButton = ref<HTMLButtonElement | null>(null);
+const moreButton = ref<HTMLButtonElement | null>(null);
 
-let mediaQuery: MediaQueryList | undefined;
+let drawerTrigger: HTMLElement | null = null;
 
-function syncViewport(event?: MediaQueryListEvent) {
-  isMobile.value = event
-    ? event.matches
-    : window.matchMedia('(max-width: 960px)').matches;
+const showSidebarLabels = computed(() => isMobile.value || !collapsed.value);
+const role = computed(() => auth.user?.role ?? 'student');
+
+const displayRole = computed(
+  () => role.value.charAt(0).toUpperCase() + role.value.slice(1),
+);
+
+const displayName = computed(() => {
+  const user = auth.user;
+  if (!user) return 'Guest';
+
+  return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
+});
+
+const userInitials = computed(() =>
+  displayName.value
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0))
+    .join('')
+    .toUpperCase(),
+);
+
+const sharedLinks = [
+  { to: '/app/messages', label: 'Messages', icon: chatbubblesOutline },
+  { to: '/app/meetings', label: 'Meetings', icon: videocamOutline },
+];
+
+const navItems = computed(() => {
+  if (role.value === 'admin') {
+    return [
+      { to: '/app/admin/dashboard', label: 'Dashboard', icon: homeOutline },
+      { to: '/app/admin/users', label: 'Users', icon: peopleOutline },
+      { to: '/app/admin/courses', label: 'All Courses', icon: bookOutline },
+      { to: '/app/admin/announcements', label: 'Announcements', icon: documentTextOutline },
+      { to: '/app/admin/activity', label: 'Activity Logs', icon: listOutline },
+    ];
+  }
+
+  if (role.value === 'instructor') {
+    return [
+      { to: '/app/instructor/dashboard', label: 'Dashboard', icon: homeOutline },
+      { to: '/app/instructor/courses', label: 'My Courses', icon: bookOutline },
+      ...sharedLinks,
+    ];
+  }
+
+  return [
+    { to: '/app/student/dashboard', label: 'Dashboard', icon: homeOutline },
+    { to: '/app/student/courses', label: 'My Courses', icon: bookOutline },
+    { to: '/app/student/assignments', label: 'Assignments', icon: documentTextOutline },
+    { to: '/app/student/grades', label: 'Grades', icon: trophyOutline },
+    ...sharedLinks,
+  ];
+});
+
+const mobileNavItems = computed(() =>
+  navItems.value.filter((item) =>
+    item.icon === homeOutline ||
+    item.icon === bookOutline ||
+    sharedLinks.some((link) => link.to === item.to),
+  ),
+);
+
+const isMoreActive = computed(() =>
+  mobileNavOpen.value || mobileNavItems.value.every((item) => !isActive(item.to)),
+);
+
+function isActive(path: string) {
+  return route.path === path || route.path.startsWith(`${path}/`);
+}
+
+const titles: Record<string, string> = {
+  'admin-dashboard': 'Admin Dashboard',
+  'admin-users': 'User Management',
+  'admin-user-detail': 'User Details',
+  'admin-announcements': 'Announcements',
+  'admin-courses': 'All Courses',
+  'admin-activity': 'Activity Logs',
+  'instructor-dashboard': 'Instructor Dashboard',
+  'instructor-courses': 'My Courses',
+  'instructor-course-new': 'New Course',
+  'instructor-course-edit': 'Edit Course',
+  'instructor-course-content': 'Course Content',
+  'instructor-course-roster': 'Course Roster',
+  'instructor-course-announcements': 'Course Announcements',
+  'instructor-assignments': 'Assignments',
+  'instructor-assignment-new': 'New Assignment',
+  'instructor-assignment-edit': 'Edit Assignment',
+  'instructor-submissions': 'Submissions',
+  'instructor-meeting-new': 'Schedule Meeting',
+  'student-dashboard': 'Dashboard',
+  'student-courses': 'My Courses',
+  'student-courses-browse': 'Browse Courses',
+  'student-course-home': 'Course',
+  'student-lesson-view': 'Lesson',
+  'student-assignments': 'Assignments',
+  'student-assignment-submit': 'Submit Assignment',
+  'student-grades': 'Grades',
+  messages: 'Messages',
+  meetings: 'Meetings',
+  'meeting-room': 'Meeting Room',
+  profile: 'Profile',
+};
+
+const pageTitle = computed(() => titles[String(route.name)] ?? 'Plumi');
+
+function syncViewport(event: MediaQueryListEvent) {
+  isMobile.value = event.matches;
 
   if (!isMobile.value) {
     mobileNavOpen.value = false;
+    drawerTrigger = null;
   }
 }
 
-onMounted(() => {
-  mediaQuery = window.matchMedia('(max-width: 960px)');
-  syncViewport();
-  mediaQuery.addEventListener('change', syncViewport);
-});
+onMounted(() => viewport.addEventListener('change', syncViewport));
+onBeforeUnmount(() => viewport.removeEventListener('change', syncViewport));
 
-onBeforeUnmount(() => {
-  mediaQuery?.removeEventListener('change', syncViewport);
-});
+async function openMobileNav(event: MouseEvent) {
+  if (!isMobile.value || mobileNavOpen.value) return;
 
-async function openMobileNav() {
-  if (!isMobile.value) return;
+  drawerTrigger = event.currentTarget instanceof HTMLElement
+    ? event.currentTarget
+    : null;
 
   mobileNavOpen.value = true;
   await nextTick();
+  closeButton.value?.focus();
+}
 
-  document
-    .querySelector<HTMLButtonElement>('.sidebar__mobile-close')
-    ?.focus();
+function closeMobileNav() {
+  if (!mobileNavOpen.value) return;
+
+  const trigger = drawerTrigger;
+  drawerTrigger = null;
+  mobileNavOpen.value = false;
+
+  void nextTick(() => {
+    if (!mobileNavOpen.value && !logoutModalOpen.value) {
+      (trigger?.isConnected ? trigger : moreButton.value)?.focus();
+    }
+  });
 }
 
 function trapDrawerFocus(event: KeyboardEvent) {
   if (!isMobile.value || !mobileNavOpen.value) return;
 
   const container = event.currentTarget as HTMLElement;
-
   const elements = Array.from(
-    container.querySelectorAll<HTMLElement>(
-      'a[href],button:not([disabled])',
-    ),
+    container.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
   );
-
   const first = elements[0];
   const last = elements[elements.length - 1];
 
@@ -312,203 +382,6 @@ function trapDrawerFocus(event: KeyboardEvent) {
     first?.focus();
   }
 }
-
-function closeMobileNav() {
-  const wasOpen = mobileNavOpen.value;
-  mobileNavOpen.value = false;
-
-  if (wasOpen) {
-    void nextTick(() => {
-      document
-        .querySelector<HTMLButtonElement>('.topbar__menu')
-        ?.focus();
-    });
-  }
-}
-
-const displayName = computed(() => {
-  const user = auth.user;
-
-  if (!user) return 'Guest';
-
-  return (
-    [user.firstName, user.lastName].filter(Boolean).join(' ') ||
-    user.email
-  );
-});
-
-const displayRole = computed(() => {
-  const role = auth.user?.role ?? 'student';
-  return role.charAt(0).toUpperCase() + role.slice(1);
-});
-
-const userInitials = computed(() => {
-  const user = auth.user;
-
-  if (!user) return 'G';
-
-  const name = [user.firstName, user.lastName]
-    .filter(Boolean)
-    .join(' ')
-    .trim();
-
-  if (name) {
-    return name
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part.charAt(0))
-      .join('')
-      .toUpperCase();
-  }
-
-  return user.email?.charAt(0).toUpperCase() ?? 'U';
-});
-
-const navItems = computed(() => {
-  const role = auth.user?.role ?? 'student';
-
-  if (role === 'admin') {
-    return [
-      {
-        to: '/app/admin/dashboard',
-        label: 'Dashboard',
-        icon: homeOutline,
-      },
-      {
-        to: '/app/admin/users',
-        label: 'Users',
-        icon: peopleOutline,
-      },
-      {
-        to: '/app/admin/courses',
-        label: 'All Courses',
-        icon: bookOutline,
-      },
-      {
-        to: '/app/admin/announcements',
-        label: 'Announcements',
-        icon: documentTextOutline,
-      },
-      {
-        to: '/app/admin/activity',
-        label: 'Activity Logs',
-        icon: listOutline,
-      },
-    ];
-  }
-
-  if (role === 'instructor') {
-    return [
-      {
-        to: '/app/instructor/dashboard',
-        label: 'Dashboard',
-        icon: homeOutline,
-      },
-      {
-        to: '/app/instructor/courses',
-        label: 'My Courses',
-        icon: bookOutline,
-      },
-      {
-        to: '/app/messages',
-        label: 'Messages',
-        icon: chatbubblesOutline,
-      },
-      {
-        to: '/app/meetings',
-        label: 'Meetings',
-        icon: videocamOutline,
-      },
-    ];
-  }
-
-  return [
-    {
-      to: '/app/student/dashboard',
-      label: 'Dashboard',
-      icon: homeOutline,
-    },
-    {
-      to: '/app/student/courses',
-      label: 'My Courses',
-      icon: bookOutline,
-    },
-    {
-      to: '/app/student/assignments',
-      label: 'Assignments',
-      icon: documentTextOutline,
-    },
-    {
-      to: '/app/student/grades',
-      label: 'Grades',
-      icon: trophyOutline,
-    },
-    {
-      to: '/app/messages',
-      label: 'Messages',
-      icon: chatbubblesOutline,
-    },
-    {
-      to: '/app/meetings',
-      label: 'Meetings',
-      icon: videocamOutline,
-    },
-  ];
-});
-
-const mobileNavItems = computed(() =>
-  navItems.value.filter(
-    (item, index) =>
-      index === 0 ||
-      item.icon === bookOutline ||
-      item.to === '/app/messages',
-  ),
-);
-
-function isActive(path: string) {
-  if (path === '/app') {
-    return route.path === '/app' || route.path === '/app/';
-  }
-
-  return route.path === path || route.path.startsWith(`${path}/`);
-}
-
-const pageTitle = computed(() => {
-  const titles: Record<string, string> = {
-    'admin-dashboard': 'Admin Dashboard',
-    'admin-users': 'User Management',
-    'admin-user-detail': 'User Details',
-    'admin-announcements': 'Announcements',
-    'admin-courses': 'All Courses',
-    'admin-activity': 'Activity Logs',
-    'instructor-dashboard': 'Instructor Dashboard',
-    'instructor-courses': 'My Courses',
-    'instructor-course-new': 'New Course',
-    'instructor-course-edit': 'Edit Course',
-    'instructor-course-content': 'Course Content',
-    'instructor-course-roster': 'Course Roster',
-    'instructor-course-announcements': 'Course Announcements',
-    'instructor-assignments': 'Assignments',
-    'instructor-assignment-new': 'New Assignment',
-    'instructor-assignment-edit': 'Edit Assignment',
-    'instructor-submissions': 'Submissions',
-    'instructor-meeting-new': 'Schedule Meeting',
-    'student-dashboard': 'Dashboard',
-    'student-courses': 'My Courses',
-    'student-courses-browse': 'Browse Courses',
-    'student-course-home': 'Course',
-    'student-lesson-view': 'Lesson',
-    'student-assignments': 'Assignments',
-    'student-assignment-submit': 'Submit Assignment',
-    'student-grades': 'Grades',
-    messages: 'Messages',
-    meetings: 'Meetings',
-    'meeting-room': 'Meeting Room',
-    profile: 'Profile',
-  };
-
-  return titles[String(route.name)] ?? 'Plumi';
-});
 
 const logoutButtons = computed(() => [
   {
@@ -530,8 +403,8 @@ const logoutButtons = computed(() => [
 function openLogoutModal() {
   if (loggingOut.value) return;
 
-  closeMobileNav();
   logoutModalOpen.value = true;
+  closeMobileNav();
 }
 
 async function confirmLogout() {
@@ -544,7 +417,6 @@ async function confirmLogout() {
   } finally {
     loggingOut.value = false;
     logoutModalOpen.value = false;
-    closeMobileNav();
     await router.replace({ name: 'login' });
   }
 }
@@ -555,7 +427,6 @@ async function confirmLogout() {
 .layout {
   width: 100%;
   height: 100%;
-  min-width: 0;
   min-height: 0;
 }
 
@@ -568,20 +439,16 @@ async function confirmLogout() {
 
 .sidebar {
   display: flex;
-  flex: 0 0 var(--plumi-sidebar-width);
+  flex: 0 0 var(--plumi-sidebar-width, 248px);
   flex-direction: column;
-  width: var(--plumi-sidebar-width);
-  min-width: 0;
-  height: 100%;
-  padding: 26px 16px 18px;
+  min-height: 0;
+  padding: 24px 16px 16px;
   border-right: 1px solid var(--plumi-sidebar-border);
   background: var(--plumi-sidebar-bg);
-  transition: width 200ms, flex-basis 200ms;
 }
 
 .sidebar--collapsed {
-  flex-basis: 84px;
-  width: 84px;
+  flex-basis: var(--plumi-sidebar-collapsed-width, 84px);
   padding-inline: 12px;
 }
 
@@ -590,25 +457,14 @@ async function confirmLogout() {
   align-items: center;
   gap: 12px;
   min-height: 48px;
-  padding: 0 10px;
-  margin-bottom: 34px;
-}
-
-.sidebar__brand-mark {
-  display: grid;
-  flex: 0 0 44px;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  overflow: hidden;
-  border-radius: 14px;
-  background: var(--plumi-brand);
+  margin-bottom: 24px;
+  padding-inline: 10px;
 }
 
 .sidebar__logo {
-  display: block;
-  width: 100%;
-  height: 100%;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
   object-fit: cover;
 }
 
@@ -616,44 +472,53 @@ async function confirmLogout() {
   font-size: 25px;
   font-weight: 750;
   letter-spacing: -0.05em;
-  color: var(--plumi-ink);
 }
 
 .sidebar__section-label {
-  padding: 0 14px;
-  margin: 0 0 12px;
+  padding: 0 14px 10px;
+  color: var(--plumi-sidebar-muted);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.16em;
-  color: var(--plumi-sidebar-muted);
+  text-transform: uppercase;
 }
 
 .sidebar__nav {
   display: flex;
-  flex: 1;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 6px;
   min-height: 0;
-  overflow-y: auto;
-  padding: 3px;
+  overflow: auto;
 }
 
-.sidebar__link {
-  position: relative;
+.sidebar__link,
+.sidebar__action {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 12px;
   min-height: 48px;
-  padding: 12px 14px;
+  padding: 10px 14px;
+  border: 0;
   border-radius: 12px;
+  background: transparent;
   color: var(--plumi-sidebar-ink);
-  text-decoration: none;
+  font: inherit;
   font-size: 13px;
-  font-weight: 550;
-  transition: background 160ms, color 160ms;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
 }
 
-.sidebar__link:hover {
+.sidebar__link ion-icon,
+.sidebar__action ion-icon {
+  flex: 0 0 20px;
+  font-size: 20px;
+}
+
+.sidebar__link:hover,
+.sidebar__action:hover {
   background: var(--plumi-sidebar-hover);
 }
 
@@ -661,129 +526,76 @@ async function confirmLogout() {
   background: var(--plumi-sidebar-active-bg);
   color: var(--plumi-sidebar-active-ink);
   font-weight: 700;
-}
-
-.sidebar__link--active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 16px;
-  bottom: 16px;
-  width: 3px;
-  border-radius: 4px;
-  background: var(--plumi-primary);
-}
-
-.sidebar__icon {
-  flex: 0 0 20px;
-  font-size: 20px;
+  box-shadow: inset 3px 0 var(--plumi-primary);
 }
 
 .sidebar__footer {
-  display: flex;
-  flex-shrink: 0;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--plumi-sidebar-border);
-}
-
-.user-card {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 12px;
-  margin-bottom: 8px;
-  border: 1px solid var(--plumi-border);
-  border-radius: 14px;
-  background: var(--plumi-primary-subtle);
-  color: inherit;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background 160ms, border-color 160ms;
-}
-
-.user-card:hover {
-  background: var(--plumi-sidebar-hover);
-}
-
-.user-card--active {
-  border-color: var(--plumi-primary);
-  background: var(--plumi-primary-soft);
-}
-
-.user-card__avatar,
-.user-avatar-button {
   display: grid;
-  flex: 0 0 36px;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border: 0;
-  border-radius: 12px;
-  background: var(--plumi-primary-soft);
-  color: var(--plumi-primary);
-  font-weight: 700;
-  font-size: 12px;
-}
-
-.user-card__meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.user-card__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.user-card__role {
-  color: var(--plumi-text-muted);
-  font-size: 10px;
-}
-
-.sidebar__action {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 42px;
-  width: 100%;
-  padding: 10px 14px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--plumi-sidebar-ink);
-  text-align: left;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.sidebar__action ion-icon {
-  flex: 0 0 18px;
-  font-size: 18px;
-}
-
-.sidebar__action:hover {
-  background: var(--plumi-sidebar-hover);
+  flex-shrink: 0;
+  gap: 6px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--plumi-sidebar-border);
 }
 
 .sidebar__action--logout {
   color: var(--plumi-danger);
 }
 
-.sidebar--collapsed .sidebar__brand {
-  justify-content: center;
-  padding: 0;
+.user-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--plumi-border);
+  border-radius: 14px;
+  background: var(--plumi-primary-subtle);
+  color: inherit;
+  text-decoration: none;
 }
 
+.user-card:hover,
+.user-card--active {
+  background: var(--plumi-primary-soft);
+}
+
+.user-card__avatar {
+  display: grid;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--plumi-primary-soft);
+  color: var(--plumi-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.user-card__meta {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.user-card__meta strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-card__meta small {
+  color: var(--plumi-text-muted);
+}
+
+.sidebar--collapsed .sidebar__brand,
 .sidebar--collapsed .sidebar__link,
-.sidebar--collapsed .sidebar__action {
+.sidebar--collapsed .sidebar__action,
+.sidebar--collapsed .user-card {
   justify-content: center;
   padding-inline: 0;
 }
@@ -792,35 +604,25 @@ async function confirmLogout() {
   display: flex;
   flex: 1;
   flex-direction: column;
-  width: 0;
   min-width: 0;
   min-height: 0;
-  height: 100%;
 }
 
 .topbar {
   display: flex;
-  flex: 0 0 var(--plumi-topbar-height);
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 0 36px;
+  gap: 12px;
+  min-height: var(--plumi-topbar-height, 76px);
+  padding: 10px 32px;
   border-bottom: 1px solid var(--plumi-border);
   background: var(--plumi-surface);
 }
 
-.topbar__left,
-.topbar__actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
 .topbar__heading {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+  display: grid;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -835,19 +637,23 @@ async function confirmLogout() {
   overflow: hidden;
   margin: 0;
   font-size: 15px;
-  line-height: 1.3;
   font-weight: 650;
-  letter-spacing: -0.025em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.topbar__actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
 .icon-button {
   display: inline-grid;
-  flex: 0 0 40px;
-  place-items: center;
   width: 40px;
   height: 40px;
+  place-items: center;
   padding: 0;
   border: 1px solid var(--plumi-border);
   border-radius: 12px;
@@ -857,7 +663,7 @@ async function confirmLogout() {
 }
 
 .icon-button ion-icon {
-  font-size: 19px;
+  font-size: 20px;
 }
 
 .icon-button:hover {
@@ -867,150 +673,120 @@ async function confirmLogout() {
 
 .content-wrapper {
   position: relative;
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: var(--plumi-bg);
 }
 
 .content-outlet {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
 }
 
-.drawer-backdrop {
-  position: fixed;
-  z-index: 90;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  border: 0;
-  background: rgb(23 10 27 / 48%);
-}
-
-.sidebar__mobile-close,
+.drawer-backdrop,
 .mobile-tabs {
   display: none;
 }
 
 @media (max-width: 960px) {
   .topbar {
-    flex-basis: auto;
-    min-height: 68px;
-    padding: max(10px, env(safe-area-inset-top)) 16px 10px;
-    gap: 8px;
+    min-height: 60px;
+    padding: max(8px, env(safe-area-inset-top)) 12px 8px;
   }
 
   .topbar__eyebrow {
     display: none;
   }
 
-  .topbar__title {
-    font-size: 15px;
+  .topbar__avatar {
+    cursor: pointer;
   }
 
-  .topbar__left {
-    flex: 1;
-    gap: 10px;
+  .drawer-backdrop {
+    position: fixed;
+    z-index: 90;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: rgb(23 10 27 / 48%);
   }
 
-  .topbar__actions {
-    gap: 8px;
-  }
-
-  .sidebar,
-  .sidebar--collapsed {
+  .sidebar {
     position: fixed;
     z-index: 100;
-    inset: 0 auto 0 0;
-    flex-basis: auto;
-    width: min(310px, 87vw);
-    height: 100%;
-    height: 100dvh;
-    padding:
-      max(24px, env(safe-area-inset-top))
-      16px
-      max(18px, env(safe-area-inset-bottom));
+    inset: auto 0 0;
+    width: 100%;
+    max-height: 85vh;
+    max-height: 85dvh;
+    padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+    border-right: 0;
+    border-radius: 22px 22px 0 0;
     box-shadow: var(--plumi-shadow-drawer);
     visibility: hidden;
-    transform: translateX(-105%);
+    transform: translateY(100%);
     transition: transform 220ms, visibility 220ms;
   }
 
   .sidebar--mobile-open {
     visibility: visible;
-    transform: translateX(0);
-  }
-
-  .sidebar--collapsed .sidebar__brand {
-    justify-content: flex-start;
-    padding: 0 10px;
-  }
-
-  .sidebar--collapsed .sidebar__link,
-  .sidebar--collapsed .sidebar__action {
-    justify-content: flex-start;
-    padding-inline: 14px;
-  }
-
-  .sidebar__mobile-close {
-    display: inline-grid;
-    margin-left: auto;
+    transform: translateY(0);
   }
 
   .sidebar__brand {
-    margin-bottom: 24px;
+    margin-bottom: 12px;
+  }
+
+  .sidebar__close {
+    margin-inline-start: auto;
   }
 
   .mobile-tabs {
     display: grid;
     flex-shrink: 0;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
     gap: 4px;
-    padding: 8px 10px max(8px, env(safe-area-inset-bottom));
+    padding: 6px 8px max(6px, env(safe-area-inset-bottom));
     border-top: 1px solid var(--plumi-border);
     background: var(--plumi-surface);
   }
 
-  .mobile-tabs a {
+  .mobile-tabs :is(a, button) {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: 4px;
+    min-width: 0;
     min-height: 48px;
-    border-radius: 12px;
+    padding: 4px 0;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
     color: var(--plumi-text-muted);
-    text-decoration: none;
+    font: inherit;
     font-size: 10px;
-    font-weight: 550;
+    text-decoration: none;
+    cursor: pointer;
   }
 
   .mobile-tabs ion-icon {
-    font-size: 21px;
+    font-size: 22px;
   }
 
-  .mobile-tabs a.mobile-tabs__active {
-    color: var(--plumi-primary);
+  .mobile-tabs .mobile-tabs__active {
     background: var(--plumi-primary-soft);
+    color: var(--plumi-primary);
     font-weight: 700;
   }
 }
 
 @media (max-width: 380px) {
-  .topbar {
-    padding-inline: 10px;
-  }
-
-  .topbar__actions {
-    gap: 5px;
-  }
-
-  .user-avatar-button {
+  .topbar__avatar {
     display: none;
   }
 }
