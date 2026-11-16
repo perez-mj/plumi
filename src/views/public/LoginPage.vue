@@ -18,9 +18,14 @@
           <button
             type="button"
             class="auth__theme-toggle"
+            :aria-label="themeLabel"
+            :title="themeLabel"
             @click="toggle"
           >
-            {{ isDark ? 'Switch to light mode' : 'Switch to dark mode' }}
+            <ion-icon
+              :icon="isDark ? sunnyOutline : moonOutline"
+              aria-hidden="true"
+            />
           </button>
 
           <div>
@@ -89,14 +94,19 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { IonButton, IonContent, IonPage } from '@ionic/vue';
+import { IonButton, IonContent, IonIcon, IonPage } from '@ionic/vue';
+import { moonOutline, sunnyOutline } from 'ionicons/icons';
 import { useTheme } from '@/composables/useTheme';
 import { useAuthStore } from '@/stores/authStore';
 
 const auth = useAuthStore();
-const { isDark, toggle } = useTheme();
 const router = useRouter();
 const route = useRoute();
+const { isDark, toggle } = useTheme();
+
+const themeLabel = computed(() =>
+  isDark.value ? 'Switch to light mode' : 'Switch to dark mode',
+);
 
 const email = ref('');
 const password = ref('');
@@ -237,16 +247,31 @@ async function submit() {
 }
 
 .auth__theme-toggle {
+  display: inline-grid;
+  place-items: center;
   align-self: flex-end;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--plumi-border-strong);
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--plumi-border);
   border-radius: 12px;
   background: var(--plumi-surface);
   color: var(--plumi-ink);
-  font: inherit;
-  font-size: 0.875rem;
   cursor: pointer;
+}
+
+.auth__theme-toggle ion-icon {
+  font-size: 20px;
+}
+
+.auth__theme-toggle:hover {
+  background: var(--plumi-primary-soft);
+  color: var(--plumi-primary);
+}
+
+.auth__theme-toggle:focus-visible {
+  outline: 2px solid var(--plumi-primary);
+  outline-offset: 2px;
 }
 
 .auth__welcome {
