@@ -76,7 +76,7 @@ $$;
 -- ---------- display names (realtime-safe) ----------
 -- Returns only display fields (no email, no bio, no last_seen_at).
 -- Allowed if the caller is the same user, admin, or shares a
--- conversation / course with the target.
+-- conversation / ACTIVE course with the target.
 
 CREATE OR REPLACE FUNCTION public.get_display_names(p_ids uuid[])
 RETURNS TABLE (
@@ -109,13 +109,16 @@ AS $$
         JOIN public.enrollments e_other
           ON e_self.course_id = e_other.course_id
         WHERE e_self.student_id = auth.uid()
+          AND e_self.status = 'ACTIVE'
           AND e_other.student_id = p.id
+          AND e_other.status = 'ACTIVE'
       )
       OR EXISTS (
         SELECT 1
         FROM public.enrollments e
         JOIN public.courses c ON c.id = e.course_id
         WHERE e.student_id = auth.uid()
+          AND e.status = 'ACTIVE'
           AND c.instructor_id = p.id
       )
       OR EXISTS (
@@ -124,6 +127,7 @@ AS $$
         JOIN public.courses c ON c.id = e.course_id
         WHERE c.instructor_id = auth.uid()
           AND e.student_id = p.id
+          AND e.status = 'ACTIVE'
       )
     );
 $$;

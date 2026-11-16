@@ -1,15 +1,14 @@
 -- ============================================================
 -- 21_ai_hardening
---   * Remove client-side INSERT/UPDATE/DELETE on AI generation
---     tables. All writes go through the generate-resource Edge
---     Function using the service-role key.
---   * Reads keep the existing shape (own OR shared-in-course OR admin).
---   * Flashcard reviews remain self-managed (unchanged).
+--   * Server-managed AI generation writes (Edge Function /
+--     service role); clients keep read access + safe mutations.
+--   * ai_requests: client may enqueue PENDING rows it owns
+--     against materials/courses it can read.
+--   * material_generations: owner may toggle is_shared / title
+--     only; content is immutable from the client.
+--   * generated_questions / flashcards: read-only for clients.
+--   * flashcard_reviews: unchanged (self-managed).
 -- ============================================================
--- Rationale: the previous WITH CHECK on material_generations only
--- required created_by = auth.uid(), so a malicious enrolled student
--- could insert arbitrary shared content into their course. RLS must
--- not trust the client to describe what the server produced.
 
 -- ---------- material_generations ----------
 
@@ -18,17 +17,55 @@ DROP POLICY IF EXISTS material_generations_own ON public.material_generations;
 CREATE POLICY material_generations_read ON public.material_generations
   FOR SELECT TO authenticated
   USING (
-    created_by = auth.uid()
-    OR public.is_admin()
-    OR (
-      is_shared = true
-      AND course_id IS NOT NULL
-      AND (public.is_enrolled(course_id) OR public.teaches_course(course_id))
+    deleted_at IS NULL
+    AND (
+      created_by = auth.uid()
+      OR public.is_admin()
+      OR (
+        is_shared = true
+        AND course_id IS NOT NULL
+        AND (public.is_enrolled(course_id) OR public.teaches_course(course_id))
+      )
     )
   );
 
--- No INSERT / UPDATE / DELETE policy → denied for authenticated.
--- The Edge Function writes via the service role, which bypasses RLS.
+-- Owner may rename / toggle sharing; content stays immutable.
+CREATE POLICY material_generations_owner_update ON public.material_generations
+  FOR UPDATE TO authenticated
+  USING (created_by = auth.uid())
+  WITH CHECK (created_by = auth.uid());
+
+CREATE OR REPLACE FUNCTION public.material_generations_guard_owner_update()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.uid() IS NOT NULL
+     AND NOT public.is_admin()
+     AND OLD.created_by = auth.uid()
+     AND (
+       NEW.content         IS DISTINCT FROM OLD.content
+       OR NEW.type         IS DISTINCT FROM OLD.type
+       OR NEW.detail_level IS DISTINCT FROM OLD.detail_level
+       OR NEW.ai_request_id IS DISTINCT FROM OLD.ai_request_id
+       OR NEW.material_id  IS DISTINCT FROM OLD.material_id
+       OR NEW.course_id    IS DISTINCT FROM OLD.course_id
+       OR NEW.created_by   IS DISTINCT FROM OLD.created_by
+     )
+  THEN
+    RAISE EXCEPTION 'only title and is_shared may be changed by the owner';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS material_generations_guard_owner_update ON public.material_generations;
+CREATE TRIGGER material_generations_guard_owner_update
+  BEFORE UPDATE ON public.material_generations
+  FOR EACH ROW EXECUTE FUNCTION public.material_generations_guard_owner_update();
+
+-- No INSERT / DELETE policy for authenticated.
 
 -- ---------- generated_questions ----------
 
@@ -40,13 +77,14 @@ CREATE POLICY generated_questions_read ON public.generated_questions
   USING (
     generation_id IN (
       SELECT g.id FROM public.material_generations g
-      WHERE g.created_by = auth.uid()
-        OR (g.is_shared = true AND g.course_id IS NOT NULL
-            AND (public.is_enrolled(g.course_id) OR public.teaches_course(g.course_id)))
+      WHERE g.deleted_at IS NULL
+        AND (
+          g.created_by = auth.uid()
+          OR (g.is_shared = true AND g.course_id IS NOT NULL
+              AND (public.is_enrolled(g.course_id) OR public.teaches_course(g.course_id)))
+        )
     )
   );
-
--- No write policies.
 
 -- ---------- flashcards ----------
 
@@ -58,21 +96,16 @@ CREATE POLICY flashcards_read ON public.flashcards
   USING (
     generation_id IN (
       SELECT g.id FROM public.material_generations g
-      WHERE g.created_by = auth.uid()
-        OR (g.is_shared = true AND g.course_id IS NOT NULL
-            AND (public.is_enrolled(g.course_id) OR public.teaches_course(g.course_id)))
+      WHERE g.deleted_at IS NULL
+        AND (
+          g.created_by = auth.uid()
+          OR (g.is_shared = true AND g.course_id IS NOT NULL
+              AND (public.is_enrolled(g.course_id) OR public.teaches_course(g.course_id)))
+        )
     )
   );
 
--- No write policies.
-
 -- ---------- ai_requests ----------
--- Keep ai_requests_own as-is: it lets users read their own rows
--- for status polling. To prevent a user from inserting a fake
--- ai_requests row that a generation could later point to, tighten
--- the WITH CHECK so the client can only create PENDING rows for
--- itself. The Edge Function will create PROCESSING rows via the
--- service role and update to COMPLETED/FAILED the same way.
 
 DROP POLICY IF EXISTS ai_requests_own ON public.ai_requests;
 
@@ -91,7 +124,26 @@ CREATE POLICY ai_requests_self_insert ON public.ai_requests
     AND error_message IS NULL
     AND started_at IS NULL
     AND completed_at IS NULL
+    AND (
+      material_id IS NULL
+      OR EXISTS (
+        SELECT 1 FROM public.materials m
+        WHERE m.id = material_id
+          AND m.deleted_at IS NULL
+          AND (
+            m.uploaded_by = auth.uid()
+            OR public.teaches_course(m.course_id)
+            OR public.is_enrolled(m.course_id)
+            OR public.is_admin()
+          )
+      )
+    )
+    AND (
+      course_id IS NULL
+      OR public.is_enrolled(course_id)
+      OR public.teaches_course(course_id)
+      OR public.is_admin()
+    )
   );
 
--- No UPDATE / DELETE policy for authenticated. The Edge Function
--- manages the lifecycle via the service role.
+-- No UPDATE / DELETE policy for authenticated.

@@ -27,9 +27,10 @@ CREATE TRIGGER touch_conversation_on_message
   AFTER INSERT ON public.messages
   FOR EACH ROW EXECUTE FUNCTION public.trg_touch_conversation_on_message();
 
--- ---------- 11.2 Auto-add enrollees to course conversation ----------
+-- ---------- 11.2 Sync enrollee <-> course conversation membership ----------
+-- ACTIVE enrollee is added; non-ACTIVE (DROPPED/COMPLETED) is removed.
 
-CREATE OR REPLACE FUNCTION public.trg_add_enrollee_to_course_conversation()
+CREATE OR REPLACE FUNCTION public.trg_sync_enrollee_course_conversation()
 RETURNS TRIGGER
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public
@@ -37,10 +38,6 @@ AS $$
 DECLARE
   conv_id uuid;
 BEGIN
-  IF NEW.status <> 'ACTIVE' THEN
-    RETURN NEW;
-  END IF;
-
   SELECT id INTO conv_id
     FROM public.conversations
    WHERE type = 'COURSE' AND course_id = NEW.course_id
@@ -50,18 +47,25 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  INSERT INTO public.conversation_members (conversation_id, user_id)
-    VALUES (conv_id, NEW.student_id)
-    ON CONFLICT (conversation_id, user_id) DO NOTHING;
+  IF NEW.status = 'ACTIVE' THEN
+    INSERT INTO public.conversation_members (conversation_id, user_id)
+      VALUES (conv_id, NEW.student_id)
+      ON CONFLICT (conversation_id, user_id) DO NOTHING;
+  ELSE
+    DELETE FROM public.conversation_members
+     WHERE conversation_id = conv_id
+       AND user_id = NEW.student_id;
+  END IF;
 
   RETURN NEW;
 END;
 $$;
 
 DROP TRIGGER IF EXISTS add_enrollee_to_course_conversation ON public.enrollments;
-CREATE TRIGGER add_enrollee_to_course_conversation
+DROP TRIGGER IF EXISTS sync_enrollee_course_conversation ON public.enrollments;
+CREATE TRIGGER sync_enrollee_course_conversation
   AFTER INSERT OR UPDATE OF status ON public.enrollments
-  FOR EACH ROW EXECUTE FUNCTION public.trg_add_enrollee_to_course_conversation();
+  FOR EACH ROW EXECUTE FUNCTION public.trg_sync_enrollee_course_conversation();
 
 -- ---------- 11.3 Guard: only read status and mute may be updated ----------
 -- RLS on conversation_members allows a user to UPDATE their own row

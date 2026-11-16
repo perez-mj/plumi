@@ -4,7 +4,8 @@
 -- ============================================================
 -- The submissions_student_update RLS policy (09) already restricts
 -- what a student can change. This trigger catches any attempt to
--- tamper with graded fields even if the policy is ever loosened.
+-- tamper with graded fields or the submitted_at timestamp even if
+-- the policy is ever loosened.
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.submissions_guard_student_update()
@@ -31,6 +32,7 @@ BEGIN
        OR NEW.score         IS DISTINCT FROM OLD.score
        OR NEW.graded_at     IS DISTINCT FROM OLD.graded_at
        OR NEW.feedback      IS DISTINCT FROM OLD.feedback
+       OR NEW.submitted_at  IS DISTINCT FROM OLD.submitted_at
        OR NEW.status        NOT IN ('SUBMITTED', 'LATE')
      )
   THEN

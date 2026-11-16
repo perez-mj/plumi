@@ -4,40 +4,40 @@
 -- Design notes
 --  * Tables are added to supabase_realtime publication only if
 --    the publication exists (local dev without realtime works).
+--  * Each table is checked individually so a partially-applied
+--    run can be safely re-run.
 --  * REPLICA IDENTITY FULL is set on tables whose UPDATE/DELETE
 --    payloads must contain the old row (status transitions, soft
 --    deletes, read-state changes).
---  * This file ONLY sets up publication/replica identity. All
---    policies, helper functions, and triggers live in earlier
---    files.
 -- ============================================================
 
 -- ------------------------------------------------------------
--- 1. Realtime publication
+-- 1. Realtime publication (idempotent)
 -- ------------------------------------------------------------
 DO $$
 DECLARE
-  has_pub boolean;
+  t text;
+  tables text[] := ARRAY[
+    'messages','conversations','conversation_members',
+    'notifications','meetings','meeting_attendances',
+    'assignments','submissions','announcements'
+  ];
 BEGIN
-  SELECT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime')
-    INTO has_pub;
-
-  IF has_pub THEN
-    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.messages';
-    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.conversations';
-    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.conversation_members';
-    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications';
-    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.meetings';
-    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.meeting_attendances';
-    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.assignments';
-    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.submissions';
-    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.announcements';
-  ELSE
+  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
     RAISE NOTICE 'supabase_realtime publication not found — skipping publication adds.';
+    RETURN;
   END IF;
-EXCEPTION
-  WHEN duplicate_object THEN
-    RAISE NOTICE 'One or more tables already in supabase_realtime publication.';
+
+  FOREACH t IN ARRAY tables LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime'
+        AND schemaname = 'public'
+        AND tablename = t
+    ) THEN
+      EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', t);
+    END IF;
+  END LOOP;
 END $$;
 
 -- ------------------------------------------------------------

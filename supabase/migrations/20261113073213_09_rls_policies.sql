@@ -15,6 +15,9 @@
 --  * conversation_members: INSERT is admin-only. The
 --    messaging_open_* RPCs (13) bypass via SECURITY DEFINER.
 --    UPDATE is self-only, guarded by trigger (11).
+--  * meeting_attendances_self_write is intentionally broad
+--    here; migration 20 replaces it with INSERT/UPDATE/admin
+--    policies (and adds a partial unique index for open rows).
 -- ============================================================
 
 -- ============================================================
@@ -47,6 +50,7 @@ CREATE POLICY profiles_instructor_read_students ON public.profiles
       FROM public.enrollments e
       JOIN public.courses c ON c.id = e.course_id
       WHERE e.student_id = profiles.id
+        AND e.status = 'ACTIVE'
         AND c.instructor_id = auth.uid()
     )
   );
@@ -64,10 +68,13 @@ CREATE POLICY categories_admin_write ON public.categories
 CREATE POLICY courses_read ON public.courses
   FOR SELECT TO authenticated
   USING (
-    status = 'PUBLISHED'
-    OR instructor_id = auth.uid()
-    OR public.is_enrolled(id)
-    OR public.is_admin()
+    deleted_at IS NULL
+    AND (
+      status = 'PUBLISHED'
+      OR instructor_id = auth.uid()
+      OR public.is_enrolled(id)
+      OR public.is_admin()
+    )
   );
 
 CREATE POLICY courses_instructor_insert ON public.courses
@@ -139,11 +146,14 @@ CREATE POLICY lessons_instructor_write ON public.lessons
 CREATE POLICY materials_read ON public.materials
   FOR SELECT TO authenticated
   USING (
-    is_published = true
-    OR uploaded_by = auth.uid()
-    OR public.teaches_course(course_id)
-    OR public.is_enrolled(course_id)
-    OR public.is_admin()
+    deleted_at IS NULL
+    AND (
+      is_published = true
+      OR uploaded_by = auth.uid()
+      OR public.teaches_course(course_id)
+      OR public.is_enrolled(course_id)
+      OR public.is_admin()
+    )
   );
 
 CREATE POLICY materials_upload ON public.materials
@@ -170,38 +180,43 @@ CREATE POLICY progress_read ON public.progress
     OR public.is_admin()
   );
 
-CREATE POLICY progress_student_write ON public.progress
+-- Students may create/update their own progress; DELETE is admin-only.
+CREATE POLICY progress_student_insert ON public.progress
+  FOR INSERT TO authenticated
+  WITH CHECK (student_id = auth.uid());
+
+CREATE POLICY progress_student_update ON public.progress
+  FOR UPDATE TO authenticated
+  USING (student_id = auth.uid())
+  WITH CHECK (student_id = auth.uid());
+
+CREATE POLICY progress_admin_all ON public.progress
   FOR ALL TO authenticated
-  USING (student_id = auth.uid() OR public.is_admin())
-  WITH CHECK (student_id = auth.uid() OR public.is_admin());
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
 
 -- ============================================================
 -- 03 — assignments & grading
 -- ============================================================
 
+-- NOTE: exactly ONE assignments_read policy. Earlier duplicate
+-- aborted the whole migration.
 CREATE POLICY assignments_read ON public.assignments
   FOR SELECT TO authenticated
   USING (
-    is_published = true
-    OR created_by = auth.uid()
-    OR public.teaches_course(course_id)
-    OR public.is_enrolled(course_id)
-    OR public.is_admin()
+    deleted_at IS NULL
+    AND (
+      created_by = auth.uid()
+      OR public.teaches_course(course_id)
+      OR public.is_admin()
+      OR (is_published = true AND public.is_enrolled(course_id))
+    )
   );
 
 CREATE POLICY assignments_write ON public.assignments
   FOR ALL TO authenticated
   USING (created_by = auth.uid() OR public.teaches_course(course_id) OR public.is_admin())
   WITH CHECK (created_by = auth.uid() OR public.teaches_course(course_id) OR public.is_admin());
-
-CREATE POLICY assignments_read ON public.assignments
-  FOR SELECT TO authenticated
-  USING (
-    created_by = auth.uid()
-    OR public.teaches_course(course_id)
-    OR public.is_admin()
-    OR (is_published = true AND public.is_enrolled(course_id))
-  );
 
 CREATE POLICY submissions_student_insert ON public.submissions
   FOR INSERT TO authenticated
@@ -221,11 +236,13 @@ CREATE POLICY submissions_student_update ON public.submissions
     AND graded_at IS NULL
   );
 
+-- Graders can only update submissions in their own courses (or admin).
+-- WITH CHECK previously was "true" — that let graders rewrite
+-- student_id/assignment_id. Now constrained to the same course scope.
 CREATE POLICY submissions_grader_update ON public.submissions
   FOR UPDATE TO authenticated
   USING (
-    graded_by = auth.uid()
-    OR public.is_admin()
+    public.is_admin()
     OR assignment_id IN (
       SELECT a.id
       FROM public.assignments a
@@ -233,7 +250,15 @@ CREATE POLICY submissions_grader_update ON public.submissions
       WHERE c.instructor_id = auth.uid()
     )
   )
-  WITH CHECK (true);
+  WITH CHECK (
+    public.is_admin()
+    OR assignment_id IN (
+      SELECT a.id
+      FROM public.assignments a
+      JOIN public.courses c ON c.id = a.course_id
+      WHERE c.instructor_id = auth.uid()
+    )
+  );
 
 -- Students can read their own submission files.
 -- Course instructors can read submission files for any assignment
@@ -274,7 +299,6 @@ CREATE POLICY submission_files_student_delete ON public.submission_files
     )
   );
 
-  
 -- ============================================================
 -- 04 — AI learning resources
 -- ============================================================
@@ -357,11 +381,14 @@ CREATE POLICY flashcard_reviews_own ON public.flashcard_reviews
 CREATE POLICY announcements_read ON public.announcements
   FOR SELECT TO authenticated
   USING (
-    scope = 'SYSTEM'
-    OR (course_id IS NOT NULL
-        AND (public.is_enrolled(course_id) OR public.teaches_course(course_id)))
-    OR public.is_admin()
-    OR author_id = auth.uid()
+    deleted_at IS NULL
+    AND (
+      scope = 'SYSTEM'
+      OR (course_id IS NOT NULL
+          AND (public.is_enrolled(course_id) OR public.teaches_course(course_id)))
+      OR public.is_admin()
+      OR author_id = auth.uid()
+    )
   );
 
 CREATE POLICY announcements_author_write ON public.announcements
@@ -408,7 +435,10 @@ CREATE POLICY conversation_members_self_update ON public.conversation_members
 
 CREATE POLICY messages_member_read ON public.messages
   FOR SELECT TO authenticated
-  USING (public.is_conversation_member(conversation_id) OR public.is_admin());
+  USING (
+    deleted_at IS NULL
+    AND (public.is_conversation_member(conversation_id) OR public.is_admin())
+  );
 
 CREATE POLICY messages_member_insert ON public.messages
   FOR INSERT TO authenticated
@@ -455,6 +485,8 @@ CREATE POLICY meeting_attendances_read ON public.meeting_attendances
     )
   );
 
+-- NOTE: migration 20 DROPs and replaces this policy with
+-- INSERT/UPDATE + admin_all. Kept here so 09 runs standalone.
 CREATE POLICY meeting_attendances_self_write ON public.meeting_attendances
   FOR ALL TO authenticated
   USING (user_id = auth.uid() OR public.is_admin())
