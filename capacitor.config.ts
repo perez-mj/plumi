@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'io.plumi.lms',
-  appName: 'plumi-lms',
+  appName: 'Plumi',
   webDir: 'dist',
   server: {
     // Allow the OS to open our own scheme for auth callbacks.
