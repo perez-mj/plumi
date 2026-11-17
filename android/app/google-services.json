@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "731684709036",
+    "project_id": "plumi-d3acf",
+    "storage_bucket": "plumi-d3acf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:731684709036:android:e0c28b9e07227e67dcb509",
+        "android_client_info": {
+          "package_name": "io.plumi.lms"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDs5AJILThMgjaZ4nUCW_baJ-Zmdv9sVIw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
