@@ -1428,6 +1428,7 @@ export type Database = {
           graded_at: string | null
           graded_by: string | null
           id: string
+          resubmitted_at: string | null
           score: number | null
           status: Database["public"]["Enums"]["SubmissionStatus"]
           student_id: string
@@ -1441,6 +1442,7 @@ export type Database = {
           graded_at?: string | null
           graded_by?: string | null
           id?: string
+          resubmitted_at?: string | null
           score?: number | null
           status?: Database["public"]["Enums"]["SubmissionStatus"]
           student_id: string
@@ -1454,6 +1456,7 @@ export type Database = {
           graded_at?: string | null
           graded_by?: string | null
           id?: string
+          resubmitted_at?: string | null
           score?: number | null
           status?: Database["public"]["Enums"]["SubmissionStatus"]
           student_id?: string
@@ -1554,6 +1557,7 @@ export type Database = {
     }
     Functions: {
       current_role_name: { Args: never; Returns: string }
+      debug_whoami: { Args: never; Returns: Json }
       enroll_in_course: {
         Args: { p_course_id: string; p_enrollment_key?: string }
         Returns: {

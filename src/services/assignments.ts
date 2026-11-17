@@ -1,6 +1,9 @@
 // src/services/assignments.ts
 import { supabase } from '@/lib/supabase';
+import type { Database } from '@/types/database.types';
 import type { Assignment, Submission, SubmissionFile } from '@/types/app';
+
+type SubmissionInsert = Database['public']['Tables']['submissions']['Insert'];
 
 export const SUBMISSIONS_BUCKET = 'assignment-submissions';
 
@@ -167,8 +170,7 @@ export async function submitAssignment(params: {
 
   const { courseId, allowLate, dueAt, existing } = await loadSubmitContext(params.assignmentId);
 
-  // Guard: a graded submission cannot be edited. RLS/trigger would reject
-  // the write anyway, but the message would be cryptic.
+  // Guard: a graded submission cannot be edited.
   if (existing?.status === 'GRADED') {
     throw new Error('This submission has been graded and can no longer be edited.');
   }
@@ -179,25 +181,71 @@ export async function submitAssignment(params: {
     throw new Error('The deadline has passed and late submissions are not allowed.');
   }
 
-  const newStatus = isLate ? 'LATE' : 'SUBMITTED';
+  const newStatus: SubmissionInsert['status'] = isLate ? 'LATE' : 'SUBMITTED';
 
-  // Upsert the submission row first so we have an id for the storage path.
-  const { data: submission, error: subErr } = await supabase
-    .from('submissions')
-    .upsert(
-      {
-        assignment_id: params.assignmentId,
-        student_id: user.id,
-        content: params.content ?? null,
-        status: newStatus,
-        submitted_at: now.toISOString(),
-      },
-      { onConflict: 'assignment_id,student_id' },
-    )
-    .select('*')
-    .single();
-  if (subErr) throw subErr;
+  const basePayload = {
+    assignment_id: params.assignmentId,
+    student_id: user.id,
+    content: params.content ?? null,
+    status: newStatus,
+  };
 
+  // A resubmit after RETURNED must clear the prior grading state so
+  // submissions_student_update's WITH CHECK (graded_by/score/graded_at
+  // must be NULL) is satisfied.
+  const clearGrading = existing?.status === 'RETURNED'
+    ? { graded_by: null, score: null, graded_at: null, feedback: null }
+    : {};
+
+  let submission: Submission;
+
+  if (!existing) {
+    // First submission. Try INSERT; if a row already exists (race, or
+    // a stale client cache), fall back to UPDATE.
+    const { data, error } = await supabase
+      .from('submissions')
+      .insert({ ...basePayload, submitted_at: now.toISOString() })
+      .select('*')
+      .single();
+
+    if (!error) {
+      submission = data;
+    } else if (error.code === '23505') {
+      // Unique violation — a concurrent INSERT won. Update instead.
+      const { data: updated, error: uErr } = await supabase
+        .from('submissions')
+        .update({
+          ...basePayload,
+          ...clearGrading,
+          resubmitted_at: now.toISOString(),
+        })
+        .eq('assignment_id', params.assignmentId)
+        .eq('student_id', user.id)
+        .select('*')
+        .single();
+      if (uErr) throw uErr;
+      submission = updated;
+    } else {
+      throw error;
+    }
+  } else {
+    // Existing row the client can see. UPDATE path.
+    const { data, error } = await supabase
+      .from('submissions')
+      .update({
+        ...basePayload,
+        ...clearGrading,
+        resubmitted_at: now.toISOString(),
+      })
+      .eq('assignment_id', params.assignmentId)
+      .eq('student_id', user.id)
+      .select('*')
+      .single();
+    if (error) throw error;
+    submission = data;
+  }
+
+  // ---- file handling (unchanged) ----
   const uploadedPaths: string[] = [];
   const insertedFileIds: string[] = [];
   const replacedPaths = params.files?.length
@@ -205,8 +253,6 @@ export async function submitAssignment(params: {
     : [];
 
   try {
-    // Replace-on-resubmit: if the student is sending a new set of files,
-    // remove the previous DB rows and storage objects first.
     if (replacedPaths.length) {
       const oldFileIds = (existing?.submission_files ?? []).map((f) => f.id);
       if (oldFileIds.length) {
@@ -226,8 +272,8 @@ export async function submitAssignment(params: {
 
         const { error: upErr } = await supabase.storage
           .from(SUBMISSIONS_BUCKET)
-          .upload(storagePath, file, { 
-            contentType: file.type ,
+          .upload(storagePath, file, {
+            contentType: file.type,
             upsert: false,
           });
         if (upErr) throw upErr;
@@ -249,9 +295,6 @@ export async function submitAssignment(params: {
       }
     }
   } catch (err) {
-    // Rollback: drop anything we created this attempt, and re-create the
-    // old file rows we removed if we had to swap. Storage removal is
-    // best-effort — the DB is the source of truth for the UI.
     if (insertedFileIds.length) {
       await supabase.from('submission_files').delete().in('id', insertedFileIds);
     }
@@ -265,7 +308,6 @@ export async function submitAssignment(params: {
         storage_path: f.storage_path,
       }));
       if (oldRows.length) {
-        // Best-effort restore. If this fails, the student can resubmit.
         await supabase.from('submission_files').insert(oldRows);
       }
     }

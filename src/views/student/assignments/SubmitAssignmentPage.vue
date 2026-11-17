@@ -33,7 +33,11 @@
           <section class="panel">
             <h2 class="panel__title">Your Submission</h2>
             <p v-if="mySubmission" class="submitted-meta">
-              Submitted {{ formatDate(mySubmission.submitted_at) }} · {{ mySubmission.status }}
+              Submitted {{ formatDate(mySubmission.submitted_at) }}
+              <template v-if="mySubmission.resubmitted_at">
+                · Resubmitted {{ formatDate(mySubmission.resubmitted_at) }}
+              </template>
+              · {{ mySubmission.status }}
             </p>
 
             <ul v-if="mySubmission?.submission_files?.length" class="file-list">
